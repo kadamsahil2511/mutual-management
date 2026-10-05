@@ -8,12 +8,22 @@ import '../../core/widgets.dart';
 import 'fund_models.dart';
 import 'reference_data.dart';
 
-class FundDetailScreen extends ConsumerWidget {
+class FundDetailScreen extends ConsumerStatefulWidget {
   const FundDetailScreen({super.key, required this.schemeCode});
   final String schemeCode;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FundDetailScreen> createState() => _FundDetailScreenState();
+}
+
+class _FundDetailScreenState extends ConsumerState<FundDetailScreen> {
+  int _mobileTab = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = this.ref;
+    final schemeCode = widget.schemeCode;
+    final compact = isMobileLayout(context);
     final reference = fundCatalog
         .where((item) => item.schemeCode == schemeCode)
         .firstOrNull;
@@ -31,130 +41,270 @@ class FundDetailScreen extends ConsumerWidget {
     }
     final nav = ref.watch(fundProvider(schemeCode));
     return PageFrame(
-      title: reference.name,
-      subtitle:
-          '${reference.amc} · ${reference.category} · Scheme code ${reference.schemeCode}',
+      title: compact ? 'Fund details' : reference.name,
+      subtitle: compact
+          ? '${reference.name}\n${reference.amc} · ${reference.category} · ${reference.schemeCode}'
+          : '${reference.amc} · ${reference.category} · Scheme code ${reference.schemeCode}',
       action: Wrap(
         spacing: 8,
         runSpacing: 8,
         children: [
           FilledButton(
-            onPressed: () => context.go('/plans?scheme=$schemeCode'),
-            child: const Text('Plan a SIP'),
+            onPressed: () => context.push('/plans/sip/new?scheme=$schemeCode'),
+            child: Text(compact ? 'Plan SIP' : 'Plan a SIP'),
           ),
           OutlinedButton(
-            onPressed: () => context.go('/portfolio?invest=$schemeCode'),
-            child: const Text('Record a contribution'),
+            onPressed: () => context.push('/portfolio/add?scheme=$schemeCode'),
+            child: Text(compact ? 'Add holding' : 'Record a contribution'),
           ),
         ],
       ),
-      children: [
+      children: compact
+          ? _mobileSections(context, reference, nav, ref)
+          : [
+              nav.when(
+                loading: () => const LoadingState(
+                  message: 'Getting published NAV history…',
+                ),
+                error: (error, stack) => ErrorState(
+                  message: 'Published NAV history could not be loaded. Reference details remain available below.',
+                  onRetry: () => _refreshFund(ref, schemeCode),
+                ),
+                data: (data) => data.history.isEmpty
+                    ? _NavUnavailable(
+                        onRetry: () => _refreshFund(ref, schemeCode),
+                      )
+                    : _NavSummary(data: data),
+              ),
+              const SizedBox(height: 32),
+              const SectionTitle(
+                'Fund reference',
+                subtitle: 'Scheme information is shown with its source date. Unpublished fields remain unavailable.',
+              ),
+              ResponsiveGrid(
+                maxColumns: 3,
+                minWidth: 210,
+                children: [
+                  Metric(label: 'AMC', value: reference.amc),
+                  Metric(label: 'Category', value: reference.category),
+                  Metric(
+                    label: 'Reference date',
+                    value: dateLabel(reference.asOfDate),
+                  ),
+                  Metric(
+                    label: 'Expense ratio',
+                    value: reference.expenseRatioPct == null
+                        ? 'Unavailable'
+                        : '${reference.expenseRatioPct!.toStringAsFixed(2)}%',
+                    note:
+                        '${reference.expenseBasis ?? 'Basis unavailable'} · ${dateLabel(reference.asOfDate)} · ${_categoryAverage(reference)}',
+                  ),
+                  Metric(
+                    label: 'Assets under management',
+                    value: reference.aumCrore == null
+                        ? 'Unavailable'
+                        : '₹${reference.aumCrore!.toStringAsFixed(2)} crore',
+                  ),
+                  Metric(
+                    label: reference.minSipPaise == null
+                        ? 'Minimum SIP'
+                        : 'Minimum monthly SIP',
+                    value: reference.minSipPaise == null
+                        ? 'Unavailable'
+                        : money(reference.minSipPaise! / 100),
+                    note: reference.minSipPaise == null
+                        ? null
+                        : 'Minimum monthly instalment · ${dateLabel(reference.minimumAsOfDate ?? reference.asOfDate)}',
+                  ),
+                  Metric(
+                    label: 'Minimum lump sum',
+                    value: reference.minLumpSumPaise == null
+                        ? 'Unavailable'
+                        : money(reference.minLumpSumPaise! / 100),
+                    note: reference.minLumpSumPaise == null
+                        ? null
+                        : 'Source date · ${dateLabel(reference.minimumAsOfDate ?? reference.asOfDate)}',
+                  ),
+                  Metric(
+                    label: 'Fund manager',
+                    value: reference.manager ?? 'Unavailable',
+                    note: reference.managerExperience,
+                  ),
+                  Metric(
+                    label: 'Other funds managed',
+                    value: reference.managerOtherFunds.isEmpty
+                        ? 'Unavailable'
+                        : reference.managerOtherFunds.join(', '),
+                  ),
+                ],
+              ),
+              if (reference.minSipPaise != null ||
+                  reference.minLumpSumPaise != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: SourceLink(
+                    label:
+                        'Minimum investment source · ${dateLabel(reference.minimumAsOfDate ?? reference.asOfDate)}',
+                    url: reference.minimumSourceUrl ?? reference.sourceUrl,
+                  ),
+                ),
+              const SizedBox(height: 32),
+              SectionTitle(
+                'Returns and benchmark',
+                subtitle: reference.benchmarkName == null
+                    ? 'NAV-derived returns use available published observations. A dated benchmark series is unavailable.'
+                    : 'NAV-derived returns use the latest available observation. Dated benchmark figures use the reference date shown below.',
+              ),
+              _DatedReturns(reference: reference),
+              const SizedBox(height: 32),
+              const SectionTitle(
+                'Portfolio disclosure',
+                subtitle: 'Holdings are not inferred from NAV history. Missing disclosure is kept visible.',
+              ),
+              _Holdings(reference: reference),
+              const SizedBox(height: 20),
+              const Padding(
+                padding: EdgeInsets.only(top: 20),
+                child: Text(
+                  'Mutual fund investments are subject to market risks. Read all scheme related documents carefully. Returns are historical and do not assure future performance.',
+                  style: TextStyle(
+                    color: AppColors.body,
+                    fontSize: 13,
+                    height: 1.7,
+                  ),
+                ),
+              ),
+            ],
+    );
+  }
+
+  List<Widget> _mobileSections(
+    BuildContext context,
+    FundReference reference,
+    AsyncValue<FundData> nav,
+    WidgetRef ref,
+  ) {
+    final tabs = ['Overview', 'Performance', 'Holdings'];
+    final facts = <Widget>[
+      Metric(label: 'AMC', value: reference.amc),
+      Metric(label: 'Category', value: reference.category),
+      Metric(label: 'Reference date', value: dateLabel(reference.asOfDate)),
+      Metric(
+        label: 'Expense ratio',
+        value: reference.expenseRatioPct == null
+            ? 'Unavailable'
+            : '${reference.expenseRatioPct!.toStringAsFixed(2)}%',
+        note:
+            '${reference.expenseBasis ?? 'Basis unavailable'} · ${dateLabel(reference.asOfDate)} · ${_categoryAverage(reference)}',
+      ),
+      Metric(
+        label: 'Assets under management',
+        value: reference.aumCrore == null
+            ? 'Unavailable'
+            : '₹${reference.aumCrore!.toStringAsFixed(2)} crore',
+      ),
+      Metric(
+        label: reference.minSipPaise == null
+            ? 'Minimum SIP'
+            : 'Minimum monthly SIP',
+        value: reference.minSipPaise == null
+            ? 'Unavailable'
+            : money(reference.minSipPaise! / 100),
+        note: reference.minSipPaise == null
+            ? null
+            : 'Minimum monthly instalment · ${dateLabel(reference.minimumAsOfDate ?? reference.asOfDate)}',
+      ),
+      Metric(
+        label: 'Minimum lump sum',
+        value: reference.minLumpSumPaise == null
+            ? 'Unavailable'
+            : money(reference.minLumpSumPaise! / 100),
+        note: reference.minLumpSumPaise == null
+            ? null
+            : 'Source date · ${dateLabel(reference.minimumAsOfDate ?? reference.asOfDate)}',
+      ),
+      Metric(
+        label: 'Fund manager',
+        value: reference.manager ?? 'Unavailable',
+        note: reference.managerExperience,
+      ),
+      Metric(
+        label: 'Other funds managed',
+        value: reference.managerOtherFunds.isEmpty
+            ? 'Unavailable'
+            : reference.managerOtherFunds.join(', '),
+      ),
+    ];
+    return [
+      Wrap(
+        spacing: 6,
+        runSpacing: 4,
+        children: [
+          for (var i = 0; i < tabs.length; i++)
+            ChoiceChip(
+              label: Text(tabs[i]),
+              selected: _mobileTab == i,
+              onSelected: (_) => setState(() => _mobileTab = i),
+            ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      if (_mobileTab == 0) ...[
         nav.when(
-          loading: () =>
-              const LoadingState(message: 'Getting published NAV history…'),
+          loading: () => const LoadingState(message: 'Getting published NAV…'),
           error: (error, stack) => ErrorState(
-            message: 'Published NAV history could not be loaded. Reference details remain available below.',
-            onRetry: () => _refreshFund(ref, schemeCode),
+            message: 'Published NAV is unavailable.',
+            onRetry: () => _refreshFund(ref, widget.schemeCode),
           ),
           data: (data) => data.history.isEmpty
-              ? _NavUnavailable(onRetry: () => _refreshFund(ref, schemeCode))
-              : _NavSummary(data: data),
+              ? _NavUnavailable(
+                  onRetry: () => _refreshFund(ref, widget.schemeCode),
+                )
+              : _NavSummary(data: data, compact: true),
         ),
-        const SizedBox(height: 32),
-        const SectionTitle(
-          'Fund reference',
-          subtitle: 'Scheme information is shown with its source date. Unpublished fields remain unavailable.',
-        ),
+        const SizedBox(height: 14),
         ResponsiveGrid(
-          maxColumns: 3,
-          minWidth: 210,
-          children: [
-            Metric(label: 'AMC', value: reference.amc),
-            Metric(label: 'Category', value: reference.category),
-            Metric(
-              label: 'Reference date',
-              value: dateLabel(reference.asOfDate),
-            ),
-            Metric(
-              label: 'Expense ratio',
-              value: reference.expenseRatioPct == null
-                  ? 'Unavailable'
-                  : '${reference.expenseRatioPct!.toStringAsFixed(2)}%',
-              note:
-                  '${reference.expenseBasis ?? 'Basis unavailable'} · ${dateLabel(reference.asOfDate)} · ${_categoryAverage(reference)}',
-            ),
-            Metric(
-              label: 'Assets under management',
-              value: reference.aumCrore == null
-                  ? 'Unavailable'
-                  : '₹${reference.aumCrore!.toStringAsFixed(2)} crore',
-            ),
-            Metric(
-              label: reference.minSipPaise == null
-                  ? 'Minimum SIP'
-                  : 'Minimum monthly SIP',
-              value: reference.minSipPaise == null
-                  ? 'Unavailable'
-                  : money(reference.minSipPaise! / 100),
-              note: reference.minSipPaise == null
-                  ? null
-                  : 'Minimum monthly instalment · ${dateLabel(reference.minimumAsOfDate ?? reference.asOfDate)}',
-            ),
-            Metric(
-              label: 'Minimum lump sum',
-              value: reference.minLumpSumPaise == null
-                  ? 'Unavailable'
-                  : money(reference.minLumpSumPaise! / 100),
-              note: reference.minLumpSumPaise == null
-                  ? null
-                  : 'Source date · ${dateLabel(reference.minimumAsOfDate ?? reference.asOfDate)}',
-            ),
-            Metric(
-              label: 'Fund manager',
-              value: reference.manager ?? 'Unavailable',
-              note: reference.managerExperience,
-            ),
-            Metric(
-              label: 'Other funds managed',
-              value: reference.managerOtherFunds.isEmpty
-                  ? 'Unavailable'
-                  : reference.managerOtherFunds.join(', '),
-            ),
-          ],
+          maxColumns: 2,
+          minWidth: 140,
+          spacing: 8,
+          children: facts,
         ),
         if (reference.minSipPaise != null || reference.minLumpSumPaise != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: SourceLink(
-              label:
-                  'Minimum investment source · ${dateLabel(reference.minimumAsOfDate ?? reference.asOfDate)}',
-              url: reference.minimumSourceUrl ?? reference.sourceUrl,
-            ),
+          SourceLink(
+            label:
+                'Minimum investment source · ${dateLabel(reference.minimumAsOfDate ?? reference.asOfDate)}',
+            url: reference.minimumSourceUrl ?? reference.sourceUrl,
           ),
-        const SizedBox(height: 32),
-        SectionTitle(
-          'Returns and benchmark',
-          subtitle: reference.benchmarkName == null
-              ? 'NAV-derived returns use available published observations. A dated benchmark series is unavailable.'
-              : 'NAV-derived returns use the latest available observation. Dated benchmark figures use the reference date shown below.',
+      ] else if (_mobileTab == 1) ...[
+        nav.when(
+          loading: () => const LoadingState(message: 'Getting published NAV…'),
+          error: (error, stack) => ErrorState(
+            message: 'Published NAV returns are unavailable.',
+            onRetry: () => _refreshFund(ref, widget.schemeCode),
+          ),
+          data: (data) => data.history.isEmpty
+              ? _NavUnavailable(
+                  onRetry: () => _refreshFund(ref, widget.schemeCode),
+                )
+              : _LatestReturns(data: data),
         ),
+        const SizedBox(height: 12),
+        SectionTitle('Dated fund and benchmark'),
         _DatedReturns(reference: reference),
-        const SizedBox(height: 32),
+      ] else ...[
         const SectionTitle(
           'Portfolio disclosure',
-          subtitle: 'Holdings are not inferred from NAV history. Missing disclosure is kept visible.',
+          subtitle:
+              'Holdings are shown with reported coverage and source dates.',
         ),
         _Holdings(reference: reference),
-        const SizedBox(height: 20),
-        const Padding(
-          padding: EdgeInsets.only(top: 20),
-          child: Text(
-            'Mutual fund investments are subject to market risks. Read all scheme related documents carefully. Returns are historical and do not assure future performance.',
-            style: TextStyle(color: AppColors.body, fontSize: 13, height: 1.7),
-          ),
-        ),
       ],
-    );
+      const SizedBox(height: 16),
+      const Text(
+        'Mutual fund investments are subject to market risks. Read all scheme related documents carefully.',
+        style: TextStyle(color: AppColors.body, fontSize: 12, height: 1.5),
+      ),
+    ];
   }
 }
 
@@ -208,8 +358,9 @@ class _NavUnavailable extends StatelessWidget {
 }
 
 class _NavSummary extends StatelessWidget {
-  const _NavSummary({required this.data});
+  const _NavSummary({required this.data, this.compact = false});
   final FundData data;
+  final bool compact;
   @override
   Widget build(BuildContext context) {
     final latest = data.latest;
@@ -229,24 +380,13 @@ class _NavSummary extends StatelessWidget {
             'Valuation date · ${dateLabel(latest.date)}',
             style: const TextStyle(color: AppColors.onDarkSoft),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: compact ? 12 : 24),
           ResponsiveGrid(
-            maxColumns: 3,
-            minWidth: 170,
+            maxColumns: compact ? 1 : 3,
+            minWidth: compact ? 120 : 170,
             children: [
-              for (final years in [1, 3, 5])
-                Metric(
-                  label: years == 1
-                      ? '1-year NAV return'
-                      : '$years-year NAV CAGR',
-                  value: percentLabel(data.returnYears(years)),
-                  note: 'Calculated from NAV history',
-                  color: data.returnYears(years) == null
-                      ? AppColors.onDarkSoft
-                      : (data.returnYears(years)! >= 0
-                            ? AppColors.up
-                            : AppColors.down),
-                ),
+              for (final years in (compact ? [1] : [1, 3, 5]))
+                _NavReturnMetric(years: years, value: data.returnYears(years)),
             ],
           ),
           const SizedBox(height: 16),
@@ -262,6 +402,75 @@ class _NavSummary extends StatelessWidget {
       ),
     );
   }
+}
+
+class _NavReturnMetric extends StatelessWidget {
+  const _NavReturnMetric({required this.years, required this.value});
+  final int years;
+  final double? value;
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        years == 1 ? '1-year NAV return' : '$years-year NAV CAGR',
+        style: const TextStyle(color: AppColors.onDarkSoft, fontSize: 14),
+      ),
+      const SizedBox(height: 6),
+      Text(
+        percentLabel(value),
+        style: numberStyle(
+          size: 20,
+          color: value == null
+              ? AppColors.onDarkSoft
+              : value! >= 0
+              ? AppColors.up
+              : AppColors.down,
+        ),
+      ),
+      const SizedBox(height: 4),
+      const Text(
+        'Calculated from NAV history',
+        style: TextStyle(color: AppColors.onDarkSoft, fontSize: 12),
+      ),
+    ],
+  );
+}
+
+class _LatestReturns extends StatelessWidget {
+  const _LatestReturns({required this.data});
+  final FundData data;
+  @override
+  Widget build(BuildContext context) => AppCard(
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Latest NAV observation · ${dateLabel(data.latest.date)}',
+          style: const TextStyle(color: AppColors.body),
+        ),
+        const SizedBox(height: 12),
+        for (final years in [1, 3, 5])
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    years == 1 ? '1-year absolute return' : '$years-year CAGR',
+                  ),
+                ),
+                Text(
+                  percentLabel(data.returnYears(years)),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 class _DatedReturns extends StatelessWidget {

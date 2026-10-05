@@ -29,7 +29,9 @@ class _DepositsScreenState extends State<DepositsScreen> {
 
   @override
   Widget build(BuildContext context) => PageFrame(
-    title: 'A steadier place\nto start.',
+    title: isMobileLayout(context)
+        ? 'Fixed deposits'
+        : 'A steadier place\nto start.',
     subtitle: 'Explore published fixed-deposit rates and estimate maturity. Check current terms directly with the bank before making a decision.',
     children: [
       FutureBuilder<List<Map<String, dynamic>>>(

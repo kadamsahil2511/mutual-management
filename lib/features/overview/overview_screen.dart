@@ -18,11 +18,21 @@ class OverviewScreen extends ConsumerWidget {
     final goals = ref.watch(goalsProvider);
     final sips = ref.watch(sipsProvider);
     final width = MediaQuery.sizeOf(context).width;
+    if (isMobileLayout(context)) {
+      return _MobileDashboard(
+        contributions: contributions,
+        goals: goals,
+        sips: sips,
+        ref: ref,
+      );
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 640;
+        final compact = isMobileLayout(context);
         final tablet =
-            constraints.maxWidth >= 640 && constraints.maxWidth < 1024;
+            !compact &&
+            constraints.maxWidth >= 640 &&
+            constraints.maxWidth < 1024;
         final padding = compact
             ? 16.0
             : tablet
@@ -97,6 +107,334 @@ class OverviewScreen extends ConsumerWidget {
   }
 }
 
+class _MobileDashboard extends StatelessWidget {
+  const _MobileDashboard({
+    required this.contributions,
+    required this.goals,
+    required this.sips,
+    required this.ref,
+  });
+  final AsyncValue<List<Contribution>> contributions;
+  final AsyncValue<List<Goal>> goals;
+  final AsyncValue<List<Sip>> sips;
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = contributions.value ?? const <Contribution>[];
+    final codes = items.map((item) => item.schemeCode).toSet();
+    final navs = {
+      for (final code in codes) code: ref.watch(fundProvider(code)),
+    };
+    final complete =
+        contributions.hasValue &&
+        codes.every(
+          (code) =>
+              navs[code]!.hasValue && navs[code]!.value!.history.isNotEmpty,
+        );
+    final value = complete
+        ? items.fold<double>(
+            0,
+            (sum, item) =>
+                sum + item.units * navs[item.schemeCode]!.value!.latest.nav,
+          )
+        : 0.0;
+    final invested =
+        items.fold<int>(0, (sum, item) => sum + item.amountPaise) / 100;
+    final gain = complete ? value - invested : null;
+    final goalsList = goals.value ?? const <Goal>[];
+    final sipsList =
+        (sips.value ?? const <Sip>[]).where((sip) => sip.isActive).toList()
+          ..sort(
+            (a, b) => _nextSipDate(a, items).compareTo(_nextSipDate(b, items)),
+          );
+    final next = sipsList.isEmpty ? null : sipsList.first;
+    final nextDate = next == null
+        ? null
+        : _nextSipDate(next, contributions.value ?? const []);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Good ${_timeGreeting()},',
+            style: const TextStyle(color: AppColors.body, fontSize: 14),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Your money, in view.',
+            style: TextStyle(
+              fontSize: 27,
+              height: 1.15,
+              fontWeight: FontWeight.w400,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 14),
+          AppCard(
+            color: AppColors.dark,
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SmallLabel('SIMULATED PORTFOLIO', dark: true),
+                const SizedBox(height: 6),
+                Text(
+                  contributions.isLoading
+                      ? 'Loading…'
+                      : contributions.hasError || !complete
+                      ? 'Unavailable'
+                      : money(value),
+                  style: numberStyle(size: 28, color: Colors.white),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  items.isEmpty
+                      ? 'No contributions recorded'
+                      : complete
+                      ? 'Based on latest published NAV'
+                      : 'Latest NAV unavailable for a complete value',
+                  style: const TextStyle(
+                    color: AppColors.onDarkSoft,
+                    fontSize: 13,
+                  ),
+                ),
+                if (gain != null && items.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    'Change vs recorded contributions  ${gain >= 0 ? '+' : ''}${money(gain)}',
+                    style: const TextStyle(
+                      color: AppColors.onDarkSoft,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+                if (items.isEmpty) ...[
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Practise with a contribution. No money is moved.',
+                    style: TextStyle(color: AppColors.onDarkSoft, fontSize: 13),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _QuickAction(
+                'Add simulation',
+                Icons.add_rounded,
+                '/portfolio/add',
+              ),
+              _QuickAction('New goal', Icons.flag_outlined, '/plans/goal/new'),
+              _QuickAction('Find funds', Icons.search_rounded, '/funds'),
+            ],
+          ),
+          const SizedBox(height: 18),
+          if (goals.isLoading)
+            const Text(
+              'Loading goal progress…',
+              style: TextStyle(color: AppColors.body),
+            )
+          else if (goals.hasError)
+            TextButton(
+              onPressed: () => ref.invalidate(goalsProvider),
+              child: const Text('Retry goal progress'),
+            )
+          else if (goalsList.isEmpty)
+            AppCard(
+              color: AppColors.soft,
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'No goals yet. Set a target for something that matters.',
+                      style: TextStyle(color: AppColors.ink),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => context.push('/plans/goal/new'),
+                    child: const Text('Create'),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            Text(
+              'Goal progress',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            for (final goal in goalsList.take(2))
+              _CompactGoal(goal: goal, contributions: items),
+          ],
+          const SizedBox(height: 8),
+          if (sips.isLoading)
+            const Text(
+              'Loading upcoming plans…',
+              style: TextStyle(color: AppColors.body),
+            )
+          else if (sips.hasError)
+            TextButton(
+              onPressed: () => ref.invalidate(sipsProvider),
+              child: const Text('Retry upcoming plans'),
+            )
+          else if (next == null)
+            AppCard(
+              color: AppColors.soft,
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'No upcoming SIPs. Create a schedule when you are ready.',
+                      style: TextStyle(color: AppColors.ink),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => context.push('/plans/sip/new'),
+                    child: const Text('Plan'),
+                  ),
+                ],
+              ),
+            )
+          else
+            AppCard(
+              color: AppColors.soft,
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Next planned SIP',
+                          style: TextStyle(color: AppColors.body, fontSize: 12),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          fundCatalog
+                                  .where(
+                                    (fund) =>
+                                        fund.schemeCode == next.schemeCode,
+                                  )
+                                  .firstOrNull
+                                  ?.name ??
+                              'Scheme ${next.schemeCode}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        Text(
+                          '${money(next.amountPaise / 100)} · ${dateLabel(nextDate!)}',
+                          style: const TextStyle(
+                            color: AppColors.body,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => context.go('/plans?section=sips'),
+                    child: const Text('Plans'),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickAction extends StatelessWidget {
+  const _QuickAction(this.label, this.icon, this.route);
+  final String label;
+  final IconData icon;
+  final String route;
+  @override
+  Widget build(BuildContext context) => OutlinedButton.icon(
+    onPressed: () => context.push(route),
+    icon: Icon(icon, size: 18),
+    label: Text(label),
+  );
+}
+
+class _CompactGoal extends StatelessWidget {
+  const _CompactGoal({required this.goal, required this.contributions});
+  final Goal goal;
+  final List<Contribution> contributions;
+  @override
+  Widget build(BuildContext context) {
+    final amount = contributions
+        .where((item) => item.goalId == goal.id)
+        .fold<int>(0, (sum, item) => sum + item.amountPaise);
+    final progress = goal.targetPaise <= 0
+        ? 0.0
+        : (amount / goal.targetPaise).clamp(0, 1).toDouble();
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  goal.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+              Text(
+                '${(progress * 100).round()}%',
+                style: const TextStyle(color: AppColors.body),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(value: progress, minHeight: 4),
+          const SizedBox(height: 5),
+          Text(
+            '${money(amount / 100)} of ${money(goal.targetPaise / 100)} · ${dateLabel(goal.targetDate)}',
+            style: const TextStyle(color: AppColors.body, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+DateTime _nextSipDate(Sip sip, List<Contribution> contributions) {
+  var index = 0;
+  var date = installmentDate(sip.startDate, index, sip.intervalMonths);
+  final today = DateTime.now();
+  while (date.isBefore(DateTime(today.year, today.month, today.day)) ||
+      contributions.any((item) => item.id == installmentId(sip.id, date))) {
+    date = installmentDate(sip.startDate, ++index, sip.intervalMonths);
+    if (index > 1200) break;
+  }
+  return date;
+}
+
+String _timeGreeting() {
+  final hour = DateTime.now().hour;
+  return hour < 12
+      ? 'morning'
+      : hour < 17
+      ? 'afternoon'
+      : 'evening';
+}
+
 class _HeroBand extends StatelessWidget {
   const _HeroBand({
     required this.width,
@@ -113,7 +451,7 @@ class _HeroBand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final desktop = width >= 1024;
+    final desktop = width >= 1024 && !compact;
     final stackReserve = width < 1200 ? 148.0 : 76.0;
     final fontSize = compact
         ? 40.0

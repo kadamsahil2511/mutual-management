@@ -4,13 +4,15 @@ A Flutter web and Android app for learning about Indian mutual funds and practis
 
 [Live app](https://mutual-management.vercel.app) · [Android release](https://github.com/kadamsahil2511/mutual-management/releases/latest) · [Demo guide](docs/DEMO.md) · [Syllabus mapping](docs/SYLLABUS.md)
 
+Version 1.1 adds an app-style phone layout: five bottom tabs, a compact dashboard, focused goal/SIP/contribution forms, activity and receipts, and a More hub for your account and tools. Desktop keeps its wider layout. [Mobile UX audit](docs/MOBILE_UX_AUDIT.md) · [Mobile Home](screenshots/mobile-v1.1-home.png) · [Funds](screenshots/mobile-v1.1-funds.png) · [New goal](screenshots/mobile-v1.1-newgoal.png).
+
 ![Mutual Management overview](screenshots/overview-desktop.png)
 
 ## Features
 
 - Overview, fund discovery, a five-question educational risk profile, two/three-fund comparison and dated scheme details.
 - Email/password registration, sign-in, password reset and sign-out. New accounts start empty.
-- Editable goals, monthly/quarterly SIP schedules, explicit installment confirmation, cancellation and one-off simulated contributions.
+- Editable goals, monthly/quarterly SIP schedules, explicit installment confirmation, cancellation and one-off simulated contributions, with separate mobile forms and contribution receipts.
 - Holdings derived from immutable contributions; current valuation, gain/loss, value-weighted sectors and disclosed-security overlap.
 - Six original articles with official videos; SIP, lump-sum, goal and FD calculators.
 - MFAPI NAV history with six-hour public caching, refresh, timeout, retry and cached/offline labels. Dated bank rates and source links.

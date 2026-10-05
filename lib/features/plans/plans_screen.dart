@@ -12,14 +12,16 @@ import '../funds/reference_data.dart';
 import 'user_models.dart';
 
 class PlansScreen extends ConsumerStatefulWidget {
-  const PlansScreen({super.key, this.schemeCode});
+  const PlansScreen({super.key, this.schemeCode, this.showSips = false});
   final String? schemeCode;
+  final bool showSips;
   @override
   ConsumerState<PlansScreen> createState() => _PlansScreenState();
 }
 
 class _PlansScreenState extends ConsumerState<PlansScreen> {
   Goal? _editing;
+  late bool _showSips = widget.showSips;
   String? _busyId;
   final _selectedDue = <String, DateTime>{};
   Future<void> _record(Sip sip, DateTime due) async {
@@ -146,11 +148,24 @@ class _PlansScreenState extends ConsumerState<PlansScreen> {
     final recordedIds = records.map((e) => e.id).toSet();
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final mobile = isMobileLayout(context);
     return PageFrame(
-      title: 'Make room for\nwhat matters.',
-      subtitle: 'A goal gives your money a direction. Build a plan, then practice one installment at a time.',
+      title: mobile ? 'Your plans' : 'Make room for\nwhat matters.',
+      subtitle: mobile ? 'Keep your goals and SIP schedules together.' : 'A goal gives your money a direction. Build a plan, then practice one installment at a time.',
       children: [
         const SimulationNote(),
+        if (mobile) ...[
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(value: false, label: Text('Goals')),
+              ButtonSegment(value: true, label: Text('SIPs')),
+            ],
+            selected: {_showSips},
+            onSelectionChanged: (selection) =>
+                setState(() => _showSips = selection.first),
+          ),
+          const SizedBox(height: 20),
+        ],
         if (ref.watch(authStateProvider).value == null)
           AppCard(
             child: Column(
@@ -166,224 +181,257 @@ class _PlansScreenState extends ConsumerState<PlansScreen> {
               ],
             ),
           ),
-        Text('Your goals', style: Theme.of(context).textTheme.headlineMedium),
-        RecordStatus(
-          value: goals,
-          onRetry: () => ref.invalidate(goalsProvider),
-          child: Column(
+        if (!mobile || !_showSips) ...[
+          Row(
             children: [
-              for (final goal in goals.value ?? <Goal>[])
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: AppCard(
-                    child: Builder(
-                      builder: (context) {
-                        final saved = records
-                            .where((c) => c.goalId == goal.id)
-                            .fold<int>(0, (sum, c) => sum + c.amountPaise);
-                        final months =
-                            ((goal.targetDate.year - today.year) * 12 +
-                                    goal.targetDate.month -
-                                    today.month)
-                                .clamp(0, 1200);
-                        final required = requiredMonthly(
-                          target: goal.targetPaise / 100,
-                          initial: saved / 100,
-                          months: months,
-                          annualReturn: goal.assumedAnnualReturn,
-                        );
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Wrap(
-                              alignment: WrapAlignment.spaceBetween,
-                              spacing: 16,
-                              children: [
-                                Text(
-                                  goal.name,
-                                  style: Theme.of(context).textTheme.titleLarge,
-                                ),
-                                TextButton(
-                                  onPressed: () =>
-                                      setState(() => _editing = goal),
-                                  child: const Text('Edit goal'),
-                                ),
-                              ],
-                            ),
-                            MoneyText(goal.targetPaise / 100, size: 28),
-                            Text(
-                              'Target ${DateFormat.yMMMd().format(goal.targetDate)}',
-                            ),
-                            const SizedBox(height: 16),
-                            LinearProgressIndicator(
-                              value: (saved / goal.targetPaise).clamp(0, 1),
-                              minHeight: 8,
-                              borderRadius: BorderRadius.circular(100),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '₹${(saved / 100).toStringAsFixed(2)} contributed · ${(saved / goal.targetPaise * 100).toStringAsFixed(1)}% of target',
-                            ),
-                            Text(
-                              required.isFinite
-                                  ? 'Estimated monthly amount: ₹${required.toStringAsFixed(2)} at ${goal.assumedAnnualReturn}% assumed annual return.'
-                                  : 'Target date reached. Edit the date to calculate a monthly plan.',
-                            ),
-                            const Text(
-                              'Progress tracks contributions, not a promised future value.',
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
+              Expanded(
+                child: Text(
+                  'Your goals',
+                  style: Theme.of(context).textTheme.headlineMedium,
                 ),
-              if (goals.value?.isEmpty ?? false)
-                const EmptyState(
-                  title: 'Every goal starts somewhere.',
-                  message: 'Create your first goal below. Your account begins with no investments.',
+              ),
+              if (mobile)
+                FilledButton.icon(
+                  onPressed: () => context.push('/plans/goal/new'),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Create goal'),
                 ),
             ],
           ),
-        ),
-        GoalForm(
-          key: ValueKey(_editing?.id ?? 'new'),
-          initial: _editing,
-          onSaved: () => setState(() => _editing = null),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          'Your SIP plans',
-          style: Theme.of(context).textTheme.headlineMedium,
-        ),
-        RecordStatus(
-          value: sips,
-          onRetry: () => ref.invalidate(sipsProvider),
-          child: Column(
-            children: [
-              for (final sip in sips.value ?? <Sip>[])
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: AppCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          fundCatalog
-                              .firstWhere((f) => f.schemeCode == sip.schemeCode)
-                              .name,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 8),
-                        MoneyText(sip.amountPaise / 100),
-                        Text(
-                          '${sip.intervalMonths == 1 ? 'Monthly' : 'Quarterly'} · original day ${sip.startDate.day} · ${sip.isActive ? 'Active' : 'Cancelled'}',
-                        ),
-                        if (sip.isActive) ...[
-                          RecordStatus(
-                            value: contributions,
-                            onRetry: () =>
-                                ref.invalidate(contributionsProvider),
-                            child: Builder(
-                              builder: (context) {
-                                final due = <DateTime>[];
-                                DateTime? next;
-                                for (var i = 0; i < 1200; i++) {
-                                  final date = installmentDate(
-                                    sip.startDate,
-                                    i,
-                                    sip.intervalMonths,
-                                  );
-                                  if (date.isAfter(today)) {
-                                    next = date;
-                                    break;
+          RecordStatus(
+            value: goals,
+            onRetry: () => ref.invalidate(goalsProvider),
+            child: Column(
+              children: [
+                for (final goal in goals.value ?? <Goal>[])
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: AppCard(
+                      child: Builder(
+                        builder: (context) {
+                          final saved = records
+                              .where((c) => c.goalId == goal.id)
+                              .fold<int>(0, (sum, c) => sum + c.amountPaise);
+                          final months =
+                              ((goal.targetDate.year - today.year) * 12 +
+                                      goal.targetDate.month -
+                                      today.month)
+                                  .clamp(0, 1200);
+                          final required = requiredMonthly(
+                            target: goal.targetPaise / 100,
+                            initial: saved / 100,
+                            months: months,
+                            annualReturn: goal.assumedAnnualReturn,
+                          );
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                spacing: 16,
+                                children: [
+                                  Text(
+                                    goal.name,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge,
+                                  ),
+                                  TextButton(
+                                    onPressed: () => mobile
+                                        ? context.push('/plans/goal/${goal.id}')
+                                        : setState(() => _editing = goal),
+                                    child: const Text('Edit goal'),
+                                  ),
+                                ],
+                              ),
+                              MoneyText(goal.targetPaise / 100, size: 28),
+                              Text(
+                                'Target ${DateFormat.yMMMd().format(goal.targetDate)}',
+                              ),
+                              const SizedBox(height: 16),
+                              LinearProgressIndicator(
+                                value: (saved / goal.targetPaise).clamp(0, 1),
+                                minHeight: 8,
+                                borderRadius: BorderRadius.circular(100),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '₹${(saved / 100).toStringAsFixed(2)} contributed · ${(saved / goal.targetPaise * 100).toStringAsFixed(1)}% of target',
+                              ),
+                              Text(
+                                required.isFinite
+                                    ? 'Estimated monthly amount: ₹${required.toStringAsFixed(2)} at ${goal.assumedAnnualReturn}% assumed annual return.'
+                                    : 'Target date reached. Edit the date to calculate a monthly plan.',
+                              ),
+                              const Text(
+                                'Progress tracks contributions, not a promised future value.',
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                if (goals.value?.isEmpty ?? false)
+                  const EmptyState(
+                    title: 'Every goal starts somewhere.',
+                    message: 'Create your first goal below. Your account begins with no investments.',
+                  ),
+              ],
+            ),
+          ),
+          if (!mobile)
+            GoalForm(
+              key: ValueKey(_editing?.id ?? 'new'),
+              initial: _editing,
+              onSaved: () => setState(() => _editing = null),
+            ),
+          const SizedBox(height: 24),
+        ],
+        if (!mobile || _showSips) ...[
+          Text(
+            'Your SIP plans',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          RecordStatus(
+            value: sips,
+            onRetry: () => ref.invalidate(sipsProvider),
+            child: Column(
+              children: [
+                for (final sip in sips.value ?? <Sip>[])
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: AppCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            fundCatalog
+                                .firstWhere(
+                                  (f) => f.schemeCode == sip.schemeCode,
+                                )
+                                .name,
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 8),
+                          MoneyText(sip.amountPaise / 100),
+                          Text(
+                            '${sip.intervalMonths == 1 ? 'Monthly' : 'Quarterly'} · original day ${sip.startDate.day} · ${sip.isActive ? 'Active' : 'Cancelled'}',
+                          ),
+                          if (sip.isActive) ...[
+                            RecordStatus(
+                              value: contributions,
+                              onRetry: () =>
+                                  ref.invalidate(contributionsProvider),
+                              child: Builder(
+                                builder: (context) {
+                                  final due = <DateTime>[];
+                                  DateTime? next;
+                                  for (var i = 0; i < 1200; i++) {
+                                    final date = installmentDate(
+                                      sip.startDate,
+                                      i,
+                                      sip.intervalMonths,
+                                    );
+                                    if (date.isAfter(today)) {
+                                      next = date;
+                                      break;
+                                    }
+                                    if (!recordedIds.contains(
+                                      installmentId(sip.id, date),
+                                    )) {
+                                      due.add(date);
+                                    }
                                   }
-                                  if (!recordedIds.contains(
-                                    installmentId(sip.id, date),
-                                  )) {
-                                    due.add(date);
-                                  }
-                                }
-                                final selectedDue =
-                                    due.contains(_selectedDue[sip.id])
-                                    ? _selectedDue[sip.id]!
-                                    : due.firstOrNull;
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (due.isEmpty)
-                                      Text(
-                                        next == null
-                                            ? 'All installments are recorded.'
-                                            : 'Next installment ${DateFormat.yMMMd().format(next)}',
-                                      ),
-                                    if (due.isNotEmpty)
-                                      Text(
-                                        '${due.length} due · Choose an installment to record.',
-                                      ),
-                                    if (due.length > 1) ...[
-                                      const SizedBox(height: 12),
-                                      DropdownButtonFormField<DateTime>(
-                                        key: ValueKey(
-                                          '${sip.id}_${selectedDue!.toIso8601String()}',
+                                  final selectedDue =
+                                      due.contains(_selectedDue[sip.id])
+                                      ? _selectedDue[sip.id]!
+                                      : due.firstOrNull;
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      if (due.isEmpty)
+                                        Text(
+                                          next == null
+                                              ? 'All installments are recorded.'
+                                              : 'Next installment ${DateFormat.yMMMd().format(next)}',
                                         ),
-                                        initialValue: selectedDue,
-                                        isExpanded: true,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Due installment',
+                                      if (due.isNotEmpty)
+                                        Text(
+                                          '${due.length} due · Choose an installment to record.',
                                         ),
-                                        items: due
-                                            .map(
-                                              (date) => DropdownMenuItem(
-                                                value: date,
-                                                child: Text(
-                                                  DateFormat.yMMMd().format(
-                                                    date,
+                                      if (due.length > 1) ...[
+                                        const SizedBox(height: 12),
+                                        DropdownButtonFormField<DateTime>(
+                                          key: ValueKey(
+                                            '${sip.id}_${selectedDue!.toIso8601String()}',
+                                          ),
+                                          initialValue: selectedDue,
+                                          isExpanded: true,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Due installment',
+                                          ),
+                                          items: due
+                                              .map(
+                                                (date) => DropdownMenuItem(
+                                                  value: date,
+                                                  child: Text(
+                                                    DateFormat.yMMMd().format(
+                                                      date,
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
-                                            )
-                                            .toList(),
-                                        onChanged: (date) => setState(
-                                          () => _selectedDue[sip.id] = date!,
+                                              )
+                                              .toList(),
+                                          onChanged: (date) => setState(
+                                            () => _selectedDue[sip.id] = date!,
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 12),
+                                        const SizedBox(height: 12),
+                                      ],
+                                      if (due.isNotEmpty)
+                                        FilledButton.tonal(
+                                          onPressed: _busyId == null
+                                              ? () => _record(sip, selectedDue!)
+                                              : null,
+                                          child: Text(
+                                            _busyId != null
+                                                ? 'Please wait…'
+                                                : 'Record ${DateFormat.yMMMd().format(selectedDue!)}',
+                                          ),
+                                        ),
                                     ],
-                                    if (due.isNotEmpty)
-                                      FilledButton.tonal(
-                                        onPressed: _busyId == null
-                                            ? () => _record(sip, selectedDue!)
-                                            : null,
-                                        child: Text(
-                                          _busyId != null
-                                              ? 'Please wait…'
-                                              : 'Record ${DateFormat.yMMMd().format(selectedDue!)}',
-                                        ),
-                                      ),
-                                  ],
-                                );
-                              },
+                                  );
+                                },
+                              ),
                             ),
-                          ),
-                          TextButton(
-                            onPressed: () => _cancel(sip),
-                            child: const Text('Cancel future installments'),
-                          ),
+                            TextButton(
+                              onPressed: () => _cancel(sip),
+                              child: const Text('Cancel future installments'),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              if (sips.value?.isEmpty ?? false)
-                const EmptyState(
-                  title: 'Build a steady habit.',
-                  message: 'Schedule a monthly or quarterly simulation. You confirm each installment yourself.',
-                ),
-            ],
+                if (sips.value?.isEmpty ?? false)
+                  const EmptyState(
+                    title: 'Build a steady habit.',
+                    message: 'Schedule a monthly or quarterly simulation. You confirm each installment yourself.',
+                  ),
+              ],
+            ),
           ),
-        ),
-        SipForm(schemeCode: widget.schemeCode),
+          if (mobile)
+            FilledButton.icon(
+              onPressed: () => context.push('/plans/sip/new'),
+              icon: const Icon(Icons.add),
+              label: const Text('Create SIP plan'),
+            )
+          else
+            SipForm(schemeCode: widget.schemeCode),
+        ],
       ],
     );
   }
@@ -536,8 +584,9 @@ class _GoalFormState extends ConsumerState<GoalForm> {
 }
 
 class SipForm extends ConsumerStatefulWidget {
-  const SipForm({super.key, this.schemeCode});
+  const SipForm({super.key, this.schemeCode, this.onSaved});
   final String? schemeCode;
+  final VoidCallback? onSaved;
   @override
   ConsumerState<SipForm> createState() => _SipFormState();
 }
@@ -583,6 +632,7 @@ class _SipFormState extends ConsumerState<SipForm> {
           context,
           'Simulated SIP saved. Confirm each installment when it is due.',
         );
+        widget.onSaved?.call();
       }
     } catch (_) {
       if (mounted) {
@@ -718,4 +768,60 @@ class _SipFormState extends ConsumerState<SipForm> {
       ),
     );
   }
+}
+
+class GoalEditorScreen extends ConsumerWidget {
+  const GoalEditorScreen({super.key, this.goalId});
+  final String? goalId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final goals = ref.watch(goalsProvider);
+    final isNew = goalId == null;
+    final found = goals.value?.where((goal) => goal.id == goalId).firstOrNull;
+    return PageFrame(
+      title: isNew ? 'Create a goal' : 'Edit your goal',
+      subtitle: 'Set a target and a date that work for you.',
+      children: [
+        if (isNew)
+          GoalForm(onSaved: () => context.go('/plans'))
+        else if (goals.isLoading)
+          const Center(child: CircularProgressIndicator())
+        else if (goals.hasError)
+          const EmptyState(
+            title: 'Unable to load this goal',
+            message: 'Check your connection and return to your plans to retry.',
+          )
+        else if (found != null)
+          GoalForm(
+            key: ValueKey(found.id),
+            initial: found,
+            onSaved: () => context.go('/plans'),
+          )
+        else
+          const EmptyState(
+            title: 'Goal not found',
+            message: 'This goal may have been removed or belongs to another account.',
+          ),
+      ],
+    );
+  }
+}
+
+class SipEditorScreen extends StatelessWidget {
+  const SipEditorScreen({super.key, this.schemeCode});
+  final String? schemeCode;
+
+  @override
+  Widget build(BuildContext context) => PageFrame(
+    title: 'Create a SIP plan',
+    subtitle:
+        'Choose a fund and schedule. You confirm each installment yourself.',
+    children: [
+      SipForm(
+        schemeCode: schemeCode,
+        onSaved: () => context.go('/plans?section=sips'),
+      ),
+    ],
+  );
 }

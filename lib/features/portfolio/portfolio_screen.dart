@@ -17,8 +17,10 @@ class PortfolioScreen extends ConsumerWidget {
   final String? investCode;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final mobile = isMobileLayout(context);
     final records = ref.watch(contributionsProvider);
-    final contributions = records.value ?? [];
+    final contributions = [...?records.value]
+      ..sort((a, b) => b.effectiveDate.compareTo(a.effectiveDate));
     final codes = contributions.map((c) => c.schemeCode).toSet();
     final funds = {
       for (final code in codes) code: ref.watch(fundProvider(code)),
@@ -42,8 +44,15 @@ class PortfolioScreen extends ConsumerWidget {
           })
         : <String, double>{};
     return PageFrame(
-      title: 'See the whole picture.',
+      title: mobile ? 'Your investments' : 'See the whole picture.',
       subtitle: 'Every holding comes from contributions you explicitly record. Values follow the latest published NAV.',
+      action: mobile
+          ? FilledButton.icon(
+              onPressed: () => context.push('/portfolio/add'),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add simulation'),
+            )
+          : null,
       children: [
         const SimulationNote(),
         RecordStatus(
@@ -55,10 +64,23 @@ class PortfolioScreen extends ConsumerWidget {
               if (holdings.isEmpty)
                 EmptyState(
                   title: 'A clean slate.',
-                  message: 'Your simulated portfolio is empty. Record a contribution below, or create a SIP in Plans.',
-                  action: OutlinedButton(
-                    onPressed: () => context.go('/funds'),
-                    child: const Text('Explore funds'),
+                  message: mobile
+                      ? 'Tap Add simulation to practise an investment, or start a SIP in Plans.'
+                      : 'Your simulated portfolio is empty. Record a contribution below, or create a SIP in Plans.',
+                  action: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      OutlinedButton(
+                        onPressed: () => context.go('/funds'),
+                        child: const Text('Explore funds'),
+                      ),
+                      if (mobile)
+                        TextButton(
+                          onPressed: () => context.push('/portfolio/activity'),
+                          child: const Text('View activity'),
+                        ),
+                    ],
                   ),
                 ),
               if (holdings.isNotEmpty) ...[
@@ -95,54 +117,93 @@ class PortfolioScreen extends ConsumerWidget {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: AppCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            fundCatalog
-                                .firstWhere((f) => f.schemeCode == h.schemeCode)
-                                .name,
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 16),
-                          ResponsiveGrid(
-                            minWidth: 200,
-                            children: [
-                              Metric(
-                                label: 'Units',
-                                value: h.units.toStringAsFixed(6),
-                              ),
-                              Metric(
-                                label: 'Contributed',
-                                value: money(h.investedPaise / 100),
-                              ),
-                              Metric(
-                                label: 'Current value',
-                                value: h.value == null
-                                    ? 'Unavailable'
-                                    : money(h.value!),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          funds[h.schemeCode]!.when(
-                            data: (d) => Text(
-                              'NAV ${dateLabel(d.latest.date)}${d.isCached ? ' · Cached' : ''}${d.warning == null ? '' : ' · ${d.warning}'}',
+                      child: mobile
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _CompactHolding(
+                                  schemeCode: h.schemeCode,
+                                  units: h.units,
+                                  investedPaise: h.investedPaise,
+                                  value: h.value,
+                                ),
+                                const SizedBox(height: 8),
+                                funds[h.schemeCode]!.when(
+                                  data: (d) => Text(
+                                    'NAV ${dateLabel(d.latest.date)}${d.isCached ? ' · Cached' : ''}${d.warning == null ? '' : ' · ${d.warning}'}',
+                                  ),
+                                  loading: () =>
+                                      const Text('Loading published NAV…'),
+                                  error: (_, _) => TextButton(
+                                    onPressed: () => ref.invalidate(
+                                      fundProvider(h.schemeCode),
+                                    ),
+                                    child: const Text(
+                                      'NAV unavailable · Retry',
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () =>
+                                      context.push('/funds/${h.schemeCode}'),
+                                  child: const Text('Fund details'),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  fundCatalog
+                                      .firstWhere(
+                                        (f) => f.schemeCode == h.schemeCode,
+                                      )
+                                      .name,
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                ),
+                                const SizedBox(height: 16),
+                                ResponsiveGrid(
+                                  minWidth: 200,
+                                  children: [
+                                    Metric(
+                                      label: 'Units',
+                                      value: h.units.toStringAsFixed(6),
+                                    ),
+                                    Metric(
+                                      label: 'Contributed',
+                                      value: money(h.investedPaise / 100),
+                                    ),
+                                    Metric(
+                                      label: 'Current value',
+                                      value: h.value == null
+                                          ? 'Unavailable'
+                                          : money(h.value!),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                funds[h.schemeCode]!.when(
+                                  data: (d) => Text(
+                                    'NAV ${dateLabel(d.latest.date)}${d.isCached ? ' · Cached' : ''}${d.warning == null ? '' : ' · ${d.warning}'}',
+                                  ),
+                                  loading: () =>
+                                      const Text('Loading published NAV…'),
+                                  error: (_, _) => TextButton(
+                                    onPressed: () => ref.invalidate(
+                                      fundProvider(h.schemeCode),
+                                    ),
+                                    child: const Text(
+                                      'NAV unavailable · Retry',
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () =>
+                                      context.push('/funds/${h.schemeCode}'),
+                                  child: const Text('Fund details'),
+                                ),
+                              ],
                             ),
-                            loading: () => const Text('Loading published NAV…'),
-                            error: (_, _) => TextButton(
-                              onPressed: () =>
-                                  ref.invalidate(fundProvider(h.schemeCode)),
-                              child: const Text('NAV unavailable · Retry'),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () =>
-                                context.go('/funds/${h.schemeCode}'),
-                            child: const Text('Fund details'),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                 const SizedBox(height: 32),
@@ -218,44 +279,367 @@ class PortfolioScreen extends ConsumerWidget {
                       ),
                     ),
                 const SizedBox(height: 32),
-                const SectionTitle('Contribution history'),
-                for (final c in contributions.reversed)
+                if (mobile)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Recent activity',
+                          style: TextStyle(fontSize: 24, height: 1.25),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => context.push('/portfolio/activity'),
+                        child: const Text('View all'),
+                      ),
+                    ],
+                  )
+                else
+                  const SectionTitle('Contribution history'),
+                for (final c
+                    in (mobile ? contributions.take(3) : contributions))
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: AppCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            fundCatalog
-                                .firstWhere((f) => f.schemeCode == c.schemeCode)
-                                .name,
-                          ),
-                          MoneyText(c.amountPaise / 100),
-                          Text(
-                            '${c.sipId == null ? 'One-off simulation' : 'SIP simulation'} · ${dateLabel(c.effectiveDate)}',
-                          ),
-                          Text(
-                            '${c.units.toStringAsFixed(6)} units at ₹${c.nav.toStringAsFixed(4)} · NAV ${dateLabel(c.navDate)}',
-                          ),
-                        ],
-                      ),
+                    child: _ContributionTile(
+                      contribution: c,
+                      onTap: mobile
+                          ? () => context.push('/portfolio/activity/${c.id}')
+                          : null,
                     ),
+                  ),
+                if (mobile && contributions.isEmpty)
+                  TextButton(
+                    onPressed: () => context.push('/portfolio/activity'),
+                    child: const Text('View contribution history'),
                   ),
               ],
             ],
           ),
         ),
-        const SizedBox(height: 32),
-        ContributionForm(key: ValueKey(investCode), schemeCode: investCode),
+        if (!mobile) ...[
+          const SizedBox(height: 32),
+          ContributionForm(key: ValueKey(investCode), schemeCode: investCode),
+        ],
       ],
     );
   }
 }
 
-class ContributionForm extends ConsumerStatefulWidget {
-  const ContributionForm({super.key, this.schemeCode});
+class _CompactHolding extends StatelessWidget {
+  const _CompactHolding({
+    required this.schemeCode,
+    required this.units,
+    required this.investedPaise,
+    required this.value,
+  });
+  final String schemeCode;
+  final double units;
+  final int investedPaise;
+  final double? value;
+
+  @override
+  Widget build(BuildContext context) {
+    final fund = fundCatalog.firstWhere((f) => f.schemeCode == schemeCode);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(fund.name, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 5),
+        Text('${units.toStringAsFixed(4)} units'),
+        Text('Contributed ${money(investedPaise / 100)}'),
+        Text('Current value ${value == null ? 'Unavailable' : money(value!)}'),
+      ],
+    );
+  }
+}
+
+class _ContributionTile extends StatelessWidget {
+  const _ContributionTile({required this.contribution, this.onTap});
+  final Contribution contribution;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final fund = fundCatalog
+        .where((f) => f.schemeCode == contribution.schemeCode)
+        .firstOrNull;
+    return AppCard(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(2),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                fund?.name ?? 'Fund unavailable',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${contribution.sipId == null ? 'One-off' : 'SIP'} simulation · ${dateLabel(contribution.effectiveDate)}',
+              ),
+              const SizedBox(height: 3),
+              Text(
+                '${contribution.units.toStringAsFixed(6)} units at ₹${contribution.nav.toStringAsFixed(4)} · NAV ${dateLabel(contribution.navDate)}',
+                style: const TextStyle(color: AppColors.body, fontSize: 12),
+              ),
+              const SizedBox(height: 8),
+              MoneyText(contribution.amountPaise / 100),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ContributionEditorScreen extends StatelessWidget {
+  const ContributionEditorScreen({super.key, this.schemeCode});
   final String? schemeCode;
+
+  @override
+  Widget build(BuildContext context) => PageFrame(
+    title: 'Add simulation.',
+    subtitle: 'Record a walkthrough contribution using a recent published NAV.',
+    children: [
+      const SimulationNote(),
+      ContributionForm(
+        schemeCode: schemeCode,
+        onSaved: (_) => context.go('/portfolio/activity'),
+      ),
+    ],
+  );
+}
+
+class ActivityScreen extends ConsumerWidget {
+  const ActivityScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authStateProvider);
+    if (auth.isLoading) {
+      return const PageFrame(
+        title: 'Activity',
+        children: [Center(child: CircularProgressIndicator())],
+      );
+    }
+    if (auth.hasError) {
+      return const PageFrame(
+        title: 'Activity',
+        children: [
+          EmptyState(
+            title: 'Account status unavailable',
+            message: 'Check your connection and try again.',
+          ),
+        ],
+      );
+    }
+    if (auth.value == null) {
+      return PageFrame(
+        title: 'Activity',
+        subtitle: 'Your recorded simulations appear here.',
+        children: [
+          EmptyState(
+            title: 'Sign in to view activity',
+            message:
+                'Saved contribution history is available with your account.',
+            action: FilledButton(
+              onPressed: () =>
+                  context.push('/auth?next=%2Fportfolio%2Factivity'),
+              child: const Text('Sign in'),
+            ),
+          ),
+        ],
+      );
+    }
+    final records = ref.watch(contributionsProvider);
+    return PageFrame(
+      title: 'Contribution activity.',
+      subtitle: 'Each entry is a saved simulation. No real orders or debits are made.',
+      children: [
+        const SimulationNote(),
+        records.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => EmptyState(
+            title: 'Activity could not load',
+            message: 'Check your connection and try again.',
+            action: TextButton(
+              onPressed: () => ref.invalidate(contributionsProvider),
+              child: const Text('Retry'),
+            ),
+          ),
+          data: (items) {
+            final sorted = [...items]
+              ..sort((a, b) => b.effectiveDate.compareTo(a.effectiveDate));
+            if (sorted.isEmpty) {
+              return const EmptyState(
+                title: 'No activity yet',
+                message:
+                    'Your saved contribution simulations will appear here.',
+              );
+            }
+            return Column(
+              children: [
+                for (final item in sorted)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _ContributionTile(
+                      contribution: item,
+                      onTap: () => context.push(
+                        '/portfolio/activity/${Uri.encodeComponent(item.id)}',
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class ContributionDetailScreen extends ConsumerWidget {
+  const ContributionDetailScreen({super.key, required this.contributionId});
+  final String contributionId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authStateProvider);
+    if (auth.isLoading) {
+      return const PageFrame(
+        title: 'Contribution details',
+        children: [Center(child: CircularProgressIndicator())],
+      );
+    }
+    if (auth.hasError) {
+      return const PageFrame(
+        title: 'Contribution details',
+        children: [
+          EmptyState(
+            title: 'Account status unavailable',
+            message: 'Check your connection and try again.',
+          ),
+        ],
+      );
+    }
+    if (auth.value == null) {
+      return PageFrame(
+        title: 'Contribution details',
+        children: [
+          EmptyState(
+            title: 'Sign in to view this record',
+            message: 'Saved simulations belong to your account.',
+          ),
+        ],
+      );
+    }
+    final records = ref.watch(contributionsProvider);
+    return PageFrame(
+      title: 'Contribution receipt.',
+      subtitle: 'A record of a simulated transaction.',
+      children: [
+        const SimulationNote(),
+        records.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => EmptyState(
+            title: 'Record could not load',
+            message: 'Check your connection and retry.',
+            action: TextButton(
+              onPressed: () => ref.invalidate(contributionsProvider),
+              child: const Text('Retry'),
+            ),
+          ),
+          data: (items) {
+            final matches = items.where((item) => item.id == contributionId);
+            if (matches.isEmpty) {
+              return const EmptyState(
+                title: 'Record unavailable',
+                message: 'This contribution may have been removed or is not part of your account.',
+              );
+            }
+            final item = matches.first;
+            final fund = fundCatalog
+                .where((f) => f.schemeCode == item.schemeCode)
+                .firstOrNull;
+            return AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fund?.name ?? 'Fund unavailable',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 24),
+                  _ReceiptRow(
+                    label: 'Type',
+                    value: item.sipId == null
+                        ? 'One-off simulation'
+                        : 'SIP simulation',
+                  ),
+                  _ReceiptRow(
+                    label: 'Effective date',
+                    value: dateLabel(item.effectiveDate),
+                  ),
+                  _ReceiptRow(
+                    label: 'Contribution',
+                    value: money(item.amountPaise / 100),
+                  ),
+                  _ReceiptRow(
+                    label: 'Units',
+                    value: item.units.toStringAsFixed(6),
+                  ),
+                  _ReceiptRow(
+                    label: 'NAV',
+                    value:
+                        '₹${item.nav.toStringAsFixed(4)} · ${dateLabel(item.navDate)}',
+                  ),
+                  _ReceiptRow(label: 'Record ID', value: item.id),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Simulation record only. This entry is immutable and does not represent a real investment.',
+                  ),
+                  if (fund != null)
+                    TextButton(
+                      onPressed: () =>
+                          context.push('/funds/${fund.schemeCode}'),
+                      child: const Text('Open fund details'),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _ReceiptRow extends StatelessWidget {
+  const _ReceiptRow({required this.label, required this.value});
+  final String label;
+  final String value;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: AppColors.body)),
+        const SizedBox(height: 2),
+        Text(value),
+      ],
+    ),
+  );
+}
+
+class ContributionForm extends ConsumerStatefulWidget {
+  const ContributionForm({super.key, this.schemeCode, this.onSaved});
+  final String? schemeCode;
+  final ValueChanged<Contribution>? onSaved;
   @override
   ConsumerState<ContributionForm> createState() => _ContributionFormState();
 }
@@ -330,27 +714,31 @@ class _ContributionFormState extends ConsumerState<ContributionForm> {
       if (accepted != true) return;
       final repo = ref.read(userRepositoryProvider);
       if (repo == null) throw StateError('Sign in again before saving.');
-      final created = await repo.recordContribution(
-        Contribution(
-          id: _submissionId,
-          schemeCode: _scheme,
-          amountPaise: amount,
-          units: units,
-          nav: price.nav,
-          navDate: price.date,
-          effectiveDate: date,
-          goalId: _goal,
-        ),
+      final contribution = Contribution(
+        id: _submissionId,
+        schemeCode: _scheme,
+        amountPaise: amount,
+        units: units,
+        nav: price.nav,
+        navDate: price.date,
+        effectiveDate: date,
+        goalId: _goal,
       );
+      final created = await repo.recordContribution(contribution);
       if (mounted) {
         _amount.clear();
         _submissionId = newRecordId();
-        showMessage(
-          context,
-          created
-              ? 'Simulated contribution recorded.'
-              : 'Already recorded. Your portfolio is up to date.',
-        );
+        if (created) {
+          widget.onSaved?.call(contribution);
+          if (widget.onSaved == null) {
+            showMessage(context, 'Simulated contribution recorded.');
+          }
+        } else {
+          showMessage(
+            context,
+            'Already recorded. Your portfolio is up to date.',
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

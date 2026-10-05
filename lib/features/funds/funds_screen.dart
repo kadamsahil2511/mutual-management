@@ -28,11 +28,22 @@ class _FundsScreenState extends ConsumerState<FundsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final compact = isMobileLayout(context);
     final categories = [
       'All funds',
       ...fundCatalog.map((fund) => fund.category).toSet(),
     ];
     final query = _search.text.trim().toLowerCase();
+    final filters = categories
+        .map(
+          (category) => ChoiceChip(
+            label: Text(category),
+            selected: _category == category,
+            onSelected: (_) => setState(() => _category = category),
+            materialTapTargetSize: MaterialTapTargetSize.padded,
+          ),
+        )
+        .toList();
     final visible = fundCatalog
         .where(
           (fund) =>
@@ -43,13 +54,15 @@ class _FundsScreenState extends ConsumerState<FundsScreen> {
         )
         .toList();
     return PageFrame(
-      title: 'Find your next perspective.',
-      subtitle: 'Explore six mutual fund schemes across three categories. Understand the details, compare the costs, and build a plan at your own pace.',
-      action: TextButton.icon(
-        onPressed: () => context.go('/risk'),
-        icon: const Icon(Icons.tune_rounded, size: 18),
-        label: const Text('Explore your risk comfort'),
-      ),
+      title: compact ? 'Explore funds' : 'Find your next perspective.',
+      subtitle: compact ? 'Published data, clearly dated.' : 'Explore six mutual fund schemes across three categories. Understand the details, compare the costs, and build a plan at your own pace.',
+      action: compact
+          ? null
+          : TextButton.icon(
+              onPressed: () => context.push('/risk'),
+              icon: const Icon(Icons.tune_rounded, size: 18),
+              label: const Text('Explore your risk comfort'),
+            ),
       children: [
         TextField(
           key: const ValueKey('fund-search'),
@@ -69,21 +82,22 @@ class _FundsScreenState extends ConsumerState<FundsScreen> {
           ),
         ),
         const SizedBox(height: 20),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: categories
-              .map(
-                (category) => ChoiceChip(
-                  label: Text(category),
-                  selected: _category == category,
-                  onSelected: (_) => setState(() => _category = category),
-                  materialTapTargetSize: MaterialTapTargetSize.padded,
-                ),
-              )
-              .toList(),
-        ),
-        const SizedBox(height: 32),
+        if (compact)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final filter in filters)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: filter,
+                  ),
+              ],
+            ),
+          )
+        else
+          Wrap(spacing: 8, runSpacing: 8, children: filters),
+        SizedBox(height: compact ? 16 : 32),
         if (_selected.isNotEmpty) ...[
           AppCard(
             color: AppColors.soft,
@@ -107,7 +121,7 @@ class _FundsScreenState extends ConsumerState<FundsScreen> {
                     FilledButton(
                       onPressed: _selected.length < 2
                           ? null
-                          : () => context.go(
+                          : () => context.push(
                               '/compare?codes=${_selected.join(',')}',
                             ),
                       child: Text('Compare selected (${_selected.length})'),
@@ -186,23 +200,25 @@ class FundSummaryCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final fund = ref.watch(fundProvider(reference.schemeCode));
+    final compact = isMobileLayout(context);
     return AppCard(
+      padding: EdgeInsets.all(compact ? 16 : 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              FundGlyph(reference: reference),
-              const SizedBox(width: 16),
+              FundGlyph(reference: reference, size: compact ? 38 : 48),
+              SizedBox(width: compact ? 10 : 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       reference.name,
-                      style: const TextStyle(
-                        fontSize: 20,
+                      style: TextStyle(
+                        fontSize: compact ? 16 : 20,
                         fontWeight: FontWeight.w600,
                         color: AppColors.ink,
                         height: 1.35,
@@ -222,7 +238,7 @@ class FundSummaryCard extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: compact ? 12 : 24),
           fund.when(
             loading: () =>
                 const LoadingState(message: 'Getting published NAV…'),
@@ -248,32 +264,65 @@ class FundSummaryCard extends ConsumerWidget {
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ResponsiveGrid(
-                        maxColumns: 3,
-                        minWidth: 190,
-                        spacing: 20,
-                        children: [
-                          Metric(
-                            label: 'Published NAV',
-                            value: money(data.latest.nav, decimals: 4),
-                            note: dateLabel(data.latest.date),
+                      if (compact)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Metric(
+                                label: 'Latest NAV',
+                                value: money(data.latest.nav, decimals: 4),
+                                note: dateLabel(data.latest.date),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Metric(
+                                label: '1-year return',
+                                value: percentLabel(data.returnYears(1)),
+                                color: _returnColor(data.returnYears(1)),
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        ResponsiveGrid(
+                          maxColumns: 3,
+                          minWidth: 190,
+                          spacing: 20,
+                          children: [
+                            Metric(
+                              label: 'Published NAV',
+                              value: money(data.latest.nav, decimals: 4),
+                              note: dateLabel(data.latest.date),
+                            ),
+                            Metric(
+                              label: '1-year NAV return',
+                              value: percentLabel(data.returnYears(1)),
+                              color: _returnColor(data.returnYears(1)),
+                              note: 'Calculated from NAV',
+                            ),
+                            Metric(
+                              label: 'Expense ratio',
+                              value: reference.expenseRatioPct == null
+                                  ? 'Unavailable'
+                                  : '${reference.expenseRatioPct!.toStringAsFixed(2)}%',
+                              note:
+                                  'Reference: ${dateLabel(reference.asOfDate)}',
+                            ),
+                          ],
+                        ),
+                      if (compact) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Expense ratio · ${reference.expenseRatioPct == null ? 'Unavailable' : '${reference.expenseRatioPct!.toStringAsFixed(2)}%'} · ${dateLabel(reference.asOfDate)}',
+                          style: const TextStyle(
+                            color: AppColors.body,
+                            fontSize: 12,
                           ),
-                          Metric(
-                            label: '1-year NAV return',
-                            value: percentLabel(data.returnYears(1)),
-                            color: _returnColor(data.returnYears(1)),
-                            note: 'Calculated from NAV',
-                          ),
-                          Metric(
-                            label: 'Expense ratio',
-                            value: reference.expenseRatioPct == null
-                                ? 'Unavailable'
-                                : '${reference.expenseRatioPct!.toStringAsFixed(2)}%',
-                            note: 'Reference: ${dateLabel(reference.asOfDate)}',
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
+                        ),
+                      ],
+                      SizedBox(height: compact ? 8 : 16),
                       Text(
                         '${data.isCached ? 'Cached NAV' : 'NAV retrieved'} · ${dateLabel(data.fetchedAt)}${data.warning == null ? '' : ' · ${data.warning}'}',
                         style: const TextStyle(
@@ -285,14 +334,14 @@ class FundSummaryCard extends ConsumerWidget {
                     ],
                   ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: compact ? 8 : 24),
           Wrap(
             spacing: 12,
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               OutlinedButton(
-                onPressed: () => context.go('/funds/${reference.schemeCode}'),
+                onPressed: () => context.push('/funds/${reference.schemeCode}'),
                 child: const Text('Explore fund'),
               ),
               TextButton.icon(

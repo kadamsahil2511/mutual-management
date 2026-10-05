@@ -22,6 +22,11 @@ String percentLabel(num? value) => value == null || !value.isFinite
 
 double pagePadding(double width) => width < 640 ? 16 : 24;
 
+bool isMobileLayout(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  return size.width < 768 || (size.width < 1024 && size.height < 600);
+}
+
 class PageFrame extends StatelessWidget {
   const PageFrame({
     super.key,
@@ -39,8 +44,9 @@ class PageFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      final small = constraints.maxWidth < 640;
+      final small = isMobileLayout(context);
       return SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1200),
@@ -48,12 +54,12 @@ class PageFrame extends StatelessWidget {
               padding: EdgeInsets.fromLTRB(
                 pagePadding(constraints.maxWidth),
                 small
-                    ? 40
+                    ? 16
                     : constraints.maxWidth < 1024
                     ? 64
                     : 80,
                 pagePadding(constraints.maxWidth),
-                small ? 56 : 96,
+                small ? 24 : 96,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -62,35 +68,35 @@ class PageFrame extends StatelessWidget {
                     title,
                     style: TextStyle(
                       fontSize: small
-                          ? 36
+                          ? 26
                           : constraints.maxWidth < 1024
                           ? 64
                           : 80,
                       fontWeight: FontWeight.w400,
                       height: 1.08,
-                      letterSpacing: -1.2,
+                      letterSpacing: small ? -.5 : -1.2,
                       color: AppColors.ink,
                     ),
                   ),
                   if (subtitle != null) ...[
-                    const SizedBox(height: 20),
+                    SizedBox(height: small ? 8 : 20),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 720),
                       child: Text(
                         subtitle!,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          height: 1.6,
+                        style: TextStyle(
+                          fontSize: small ? 14 : 17,
+                          height: small ? 1.45 : 1.6,
                           color: AppColors.body,
                         ),
                       ),
                     ),
                   ],
                   if (action != null) ...[
-                    const SizedBox(height: 24),
+                    SizedBox(height: small ? 16 : 24),
                     Align(alignment: Alignment.centerLeft, child: action!),
                   ],
-                  const SizedBox(height: 40),
+                  SizedBox(height: small ? 20 : 40),
                   ...children,
                 ],
               ),
@@ -109,18 +115,23 @@ class AppCard extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding:
-        padding ??
-        (MediaQuery.textScalerOf(context).scale(16) > 20
-            ? const EdgeInsets.all(16)
-            : const EdgeInsets.all(32)),
-    decoration: BoxDecoration(
-      color: color ?? AppColors.canvas,
+  Widget build(BuildContext context) => Material(
+    color: color ?? AppColors.canvas,
+    shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(24),
-      border: color == null ? Border.all(color: AppColors.hairline) : null,
+      side: color == null
+          ? const BorderSide(color: AppColors.hairline)
+          : BorderSide.none,
     ),
-    child: child,
+    child: Padding(
+      padding:
+          padding ??
+          (isMobileLayout(context) ||
+                  MediaQuery.textScalerOf(context).scale(16) > 20
+              ? const EdgeInsets.all(16)
+              : const EdgeInsets.all(32)),
+      child: child,
+    ),
   );
 }
 
@@ -170,7 +181,7 @@ class EmptyState extends StatelessWidget {
         Text(
           title,
           style: const TextStyle(
-            fontSize: 25,
+            fontSize: 22,
             fontWeight: FontWeight.w400,
             height: 1.25,
           ),
@@ -227,14 +238,14 @@ class SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 24),
+    padding: EdgeInsets.only(bottom: isMobileLayout(context) ? 16 : 24),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: const TextStyle(
-            fontSize: 30,
+          style: TextStyle(
+            fontSize: isMobileLayout(context) ? 21 : 30,
             fontWeight: FontWeight.w400,
             height: 1.2,
             letterSpacing: -.5,

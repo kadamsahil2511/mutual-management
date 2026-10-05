@@ -6,6 +6,7 @@ import 'package:mutual_management/app.dart';
 import 'package:mutual_management/core/providers.dart';
 import 'package:mutual_management/core/theme.dart';
 import 'package:mutual_management/features/auth/auth_screen.dart';
+import 'package:mutual_management/features/more/more_screen.dart';
 import 'package:mutual_management/features/deposits/deposits_screen.dart';
 import 'package:mutual_management/features/funds/comparison_screen.dart';
 import 'package:mutual_management/features/funds/fund_detail_screen.dart';
@@ -30,7 +31,7 @@ void main() {
     await mono.load();
   });
   testWidgets(
-    'app navigation moves to a drawer when space or text scale is tight',
+    'phone bottom navigation and wider navigation fit at enlarged text',
     (tester) async {
       final router = createRouter(initialLocation: '/');
       addTearDown(router.dispose);
@@ -75,6 +76,24 @@ void main() {
             shellFailures.add(
               'shell at $width px / $scale scale: $initialError',
             );
+            continue;
+          }
+          if (width < 768) {
+            expect(find.byType(NavigationBar), findsOneWidget);
+            expect(find.byTooltip('Open navigation menu'), findsNothing);
+            for (final destination in [
+              '/',
+              '/funds',
+              '/portfolio',
+              '/plans',
+              '/more',
+            ]) {
+              final size = tester.getSize(
+                find.byKey(ValueKey('nav-$destination')),
+              );
+              expect(size.width, greaterThanOrEqualTo(48));
+              expect(size.height, greaterThanOrEqualTo(48));
+            }
             continue;
           }
           final compact = width < 1050 || scale > 17 / 14;
@@ -205,6 +224,14 @@ void main() {
       ('learning', () => const LearnScreen()),
       ('deposits', () => const DepositsScreen()),
       ('authentication', () => const AuthScreen()),
+      ('goal editor', () => const GoalEditorScreen()),
+      ('SIP editor', () => const SipEditorScreen()),
+      ('contribution editor', () => const ContributionEditorScreen()),
+      ('activity', () => const ActivityScreen()),
+      ('More hub', () => const MoreScreen()),
+      ('account', () => const AccountScreen()),
+      ('password reset', () => const PasswordResetScreen()),
+      ('calculators', () => const CalculatorsScreen()),
     ];
 
     final failures = <String>[];

@@ -184,7 +184,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: _busy ? null : () => _submit(reset: true),
+                    onPressed: _busy ? null : () => context.push('/auth/reset'),
                     child: const Text('Forgot password?'),
                   ),
                   const Divider(),
@@ -209,6 +209,114 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             ),
           ),
         ),
+      ),
+    ],
+  );
+}
+
+class PasswordResetScreen extends ConsumerStatefulWidget {
+  const PasswordResetScreen({super.key});
+  @override
+  ConsumerState<PasswordResetScreen> createState() =>
+      _PasswordResetScreenState();
+}
+
+class _PasswordResetScreenState extends ConsumerState<PasswordResetScreen> {
+  final _form = GlobalKey<FormState>();
+  final _email = TextEditingController();
+  bool _busy = false, _sent = false;
+  String? _error;
+  @override
+  void initState() {
+    super.initState();
+    _email.text = ref.read(authStateProvider).value?.email ?? '';
+  }
+
+  @override
+  void dispose() {
+    _email.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    if (_busy || !_form.currentState!.validate()) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(authRepositoryProvider).resetPassword(_email.text.trim());
+      if (mounted) setState(() => _sent = true);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _error = 'Could not send the reset email. Check your connection and retry.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => PageFrame(
+    title: _sent ? 'Check your inbox' : 'Forgot your password?',
+    subtitle: _sent
+        ? 'If an account exists for this email, a reset link is on its way.'
+        : 'Enter your account email. We’ll send a link to reset your password.',
+    children: [
+      AppCard(
+        child: _sent
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Icon(
+                    Icons.mark_email_read_outlined,
+                    size: 48,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Check spam as well. Return to sign in after choosing your new password.',
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton(
+                    onPressed: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/auth');
+                      }
+                    },
+                    child: const Text('Done'),
+                  ),
+                ],
+              )
+            : Form(
+                key: _form,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextFormField(
+                      controller: _email,
+                      keyboardType: TextInputType.emailAddress,
+                      autofillHints: const [AutofillHints.email],
+                      decoration: const InputDecoration(labelText: 'Email'),
+                      validator: (value) => emailError(value ?? ''),
+                      onFieldSubmitted: (_) => _send(),
+                    ),
+                    const SizedBox(height: 20),
+                    if (_error != null) ...[
+                      Text(_error!),
+                      const SizedBox(height: 12),
+                    ],
+                    FilledButton(
+                      onPressed: _busy ? null : _send,
+                      child: Text(_busy ? 'Sending…' : 'Send reset link'),
+                    ),
+                  ],
+                ),
+              ),
       ),
     ],
   );

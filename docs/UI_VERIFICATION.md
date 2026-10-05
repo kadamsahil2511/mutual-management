@@ -1,5 +1,7 @@
 # UI verification
 
+This page records the version 1.0 baseline. The version 1.1 phone redesign and its current screenshots are recorded in [the mobile UX audit](MOBILE_UX_AUDIT.md).
+
 Browser review ran on 5 October 2026 against the Flutter web server at `http://127.0.0.1:8765/` in a separate `mutual-responsive` agent-browser session. The root browser session on port 8088 was not used.
 
 ## Overview widths

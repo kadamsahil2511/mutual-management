@@ -91,41 +91,70 @@ class _LearnScreenState extends State<LearnScreen> {
             );
           }
           return PageFrame(
-            title: 'A little knowledge.\nA better beginning.',
-            subtitle: 'Understand the essentials, explore the numbers, and make space for informed decisions.',
+            title: isMobileLayout(context)
+                ? 'Learn the essentials'
+                : 'A little knowledge.\nA better beginning.',
+            subtitle: isMobileLayout(context)
+                ? 'Six short reads. Build your confidence.'
+                : 'Understand the essentials, explore the numbers, and make space for informed decisions.',
             children: [
-              ResponsiveGrid(
-                children: [
-                  for (final a in articles)
-                    AppCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.auto_stories_outlined, size: 32),
-                          const SizedBox(height: 24),
-                          Text(
-                            a['title'],
-                            style: Theme.of(context).textTheme.headlineMedium,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(a['summary']),
-                          const SizedBox(height: 24),
-                          TextButton(
-                            onPressed: () => context.go('/learn/${a['id']}'),
-                            child: const Text('Read article →'),
-                          ),
-                        ],
+              if (isMobileLayout(context)) ...[
+                for (final a in articles) ...[
+                  AppCard(
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(
+                        Icons.auto_stories_outlined,
+                        color: AppColors.primary,
                       ),
+                      title: Text(a['title']),
+                      subtitle: Text(a['summary']),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/learn/${a['id']}'),
                     ),
+                  ),
+                  const SizedBox(height: 12),
                 ],
-              ),
-              const SizedBox(height: 64),
-              const SectionTitle(
-                'Plan with the numbers',
-                subtitle: 'Change the assumptions. See how time and contributions affect the estimate.',
-              ),
-              const LearningCalculator(),
-              const SizedBox(height: 48),
+                OutlinedButton.icon(
+                  onPressed: () => context.push('/calculators'),
+                  icon: const Icon(Icons.calculate_outlined),
+                  label: const Text('Open calculators'),
+                ),
+              ] else ...[
+                ResponsiveGrid(
+                  children: [
+                    for (final a in articles)
+                      AppCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.auto_stories_outlined, size: 32),
+                            const SizedBox(height: 24),
+                            Text(
+                              a['title'],
+                              style: Theme.of(context).textTheme.headlineMedium,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(a['summary']),
+                            const SizedBox(height: 24),
+                            TextButton(
+                              onPressed: () =>
+                                  context.push('/learn/${a['id']}'),
+                              child: const Text('Read article →'),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 64),
+                const SectionTitle(
+                  'Plan with the numbers',
+                  subtitle: 'Change the assumptions. See how time and contributions affect the estimate.',
+                ),
+                const LearningCalculator(),
+              ],
+              const SizedBox(height: 24),
               const AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

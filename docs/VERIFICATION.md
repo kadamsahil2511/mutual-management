@@ -1,5 +1,9 @@
 # Verification evidence
 
+## Version 1.1 mobile revision
+
+The [mobile UX audit](MOBILE_UX_AUDIT.md) records the redesigned navigation, added screens and current screenshot evidence. Formatting and analysis pass, all 45 Flutter unit/widget tests pass, and the updated Android API 35 navigation/form integration test passes. Backend schemas, security rules, repositories and financial calculations retain the verified version 1.0 behavior described below.
+
 ## Firebase backend
 
 - Project: `device-streaming-f3ea5c85`; default Firestore database in `asia-south1`.
@@ -9,7 +13,7 @@
 - The temporary verification records and accounts were removed after the run. Generated passwords, tokens, and test account identifiers were kept outside the repository and are not recorded here.
 - No billing plan was changed. No production user records were used in the verification.
 
-## Application and release
+## Version 1.0 application and release baseline
 
 - `flutter analyze`: no issues. `flutter test`: 39 passing unit/widget tests. Numerical coverage includes the 65-unit / ₹1,560 value / ₹60 gain fixture, zero returns, leap years, original month-end dates, missing history and partial overlap. HTTP tests cover malformed responses, timeouts, retry and six-hour/offline caching.
 - Responsive checks: all requested widths (320, 390, 640, 768, 1024, 1280, 1920), plus 200% text scaling. The 1024px hero overlap was corrected and the 11 UI/responsive tests passed after that change. See [UI evidence](UI_VERIFICATION.md).
