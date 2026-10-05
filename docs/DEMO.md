@@ -2,7 +2,7 @@
 
 Open [Mutual Management](https://mutual-management.vercel.app), or install the APK from the [latest release](https://github.com/kadamsahil2511/mutual-management/releases/latest) on Android 7.0/API 24 or newer. Android may ask you to allow installation from the browser/file manager used to open the APK.
 
-On phones, use **Home, Funds, Portfolio, Plans, More** along the bottom. **More** contains your account, calculators, risk questionnaire, learning, fixed deposits and activity. Forms and details have their own screens and a Back button; the keyboard can stay open while you scroll a form. Wider screens keep the desktop navigation.
+On phones, use **Home, Funds, Portfolio, Plans, More** along the bottom. **More** contains your account, calculators, risk questionnaire, learning, fixed deposits and activity. Forms and details have their own screens and a Back button. Forms resize for the keyboard; dragging the form dismisses it so you can reach the remaining controls. Wider screens keep the desktop navigation.
 
 ## Five-minute walkthrough
 

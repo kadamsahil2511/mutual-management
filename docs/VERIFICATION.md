@@ -4,6 +4,8 @@
 
 The [mobile UX audit](MOBILE_UX_AUDIT.md) records the redesigned navigation, added screens and current screenshot evidence. Formatting and analysis pass, all 45 Flutter unit/widget tests pass, and the updated Android API 35 navigation/form integration test passes. Backend schemas, security rules, repositories and financial calculations retain the verified version 1.0 behavior described below.
 
+Version 1.1.0 release builds passed. The signed APK was installed and launched on API 35 with portrait, landscape and keyboard checks. The production Vercel app passed mobile navigation/deep-link smoke verification. [Implementation CI](https://github.com/kadamsahil2511/mutual-management/actions/runs/37290176265) passed both Flutter and Firestore jobs. Android API 24 is supported by the build minimum; device verification used API 35.
+
 ## Firebase backend
 
 - Project: `device-streaming-f3ea5c85`; default Firestore database in `asia-south1`.
