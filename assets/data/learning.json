@@ -1,0 +1,50 @@
+[
+  {
+    "id": "mutual-fund-basics",
+    "title": "How a mutual fund works",
+    "summary": "A fund pools money and owns a portfolio of securities on behalf of its unit holders.",
+    "body": "When you invest, you receive units at the applicable NAV. Your return depends on how the securities and other assets held by the scheme change in value, after scheme expenses. A mutual fund is not a deposit and does not promise a return.",
+    "sourceUrl": "https://www.amfiindia.com/investor/knowledge-center-info?zoneName=IntroductionMutualFunds",
+    "videoUrl": "https://investor.sebi.gov.in/videos/inv_awa_edu_videos/Digital%20Films/What%20is%20Mutual%20Fund/WHAT%20IS%20A%20MUTAL%20FUND%20Eng.mp4"
+  },
+  {
+    "id": "nav-explained",
+    "title": "What NAV tells you",
+    "summary": "NAV is the per-unit value of a scheme, calculated from its assets and liabilities.",
+    "body": "NAV is calculated after valuing the scheme's holdings and accounting for liabilities, then dividing by the units outstanding. A lower NAV does not mean a fund is cheaper or more attractive; compare performance over matching dates and plans instead.",
+    "sourceUrl": "https://www.amfiindia.com/investor/knowledge-center-info?zoneName=NetAssetValueNAV",
+    "videoUrl": "https://investor.sebi.gov.in/videos/inv_awa_edu_videos/Digital%20Films/What%20is%20NAV/What%20is%20NAV__Eng.mp4"
+  },
+  {
+    "id": "risk-and-returns",
+    "title": "Risk comes with returns",
+    "summary": "Mutual fund values can rise or fall, and past performance cannot assure future results.",
+    "body": "Market prices, interest rates, credit quality and liquidity can affect scheme NAVs. A fund may lose value, including principal. Consider the scheme's riskometer, investment horizon and your ability to handle losses before investing.",
+    "sourceUrl": "https://www.amfiindia.com/investor/knowledge-center-info?zoneName=riskInMutualFunds",
+    "videoUrl": "https://investor.sebi.gov.in/videos/inv_awa_edu_videos/Digital%20Films/If%20Mutual%20Funds%20diversify%20risks,%20then%20why%20are%20they%20considered%20risky/4.%20If%20Mutual%20Funds%20diversify%20risks,%20then%20why%20are%20they%20considered%20risky_eng.mp4"
+  },
+  {
+    "id": "expense-ratio",
+    "title": "Understand fund expenses",
+    "summary": "Scheme expenses are charged to the fund and reflected in its NAV.",
+    "body": "Operating and management expenses are charged as a percentage of scheme assets. Direct and regular plans of a scheme have separate expense structures and NAVs. Check the current official disclosure and make sure quoted expense figures use the same definition before comparing funds.",
+    "sourceUrl": "https://www.amfiindia.com/investor/knowledge-center-info?zoneName=expenseRatio",
+    "videoUrl": "https://investor.sebi.gov.in/videos/inv_awa_edu_videos/Digital%20Films/How%20to%20invest%20in%20direct%20plans/6.%20How%20to%20invest%20in%20Direct%20Plans%20eng.mp4"
+  },
+  {
+    "id": "direct-plans",
+    "title": "Direct and regular plans",
+    "summary": "The key difference is how the investment is distributed and the associated expense structure.",
+    "body": "A direct plan is purchased without a distributor and has a separate NAV and expense structure from the regular plan. A regular plan can include distributor services. Choose based on the support you need and compare the costs disclosed for the same plan type.",
+    "sourceUrl": "https://www.amfiindia.com/investor/knowledge-center-info?zoneName=DirectPlan",
+    "videoUrl": "https://investor.sebi.gov.in/videos/inv_awa_edu_videos/Digital%20Films/How%20to%20invest%20in%20direct%20plans/6.%20How%20to%20invest%20in%20Direct%20Plans%20eng.mp4"
+  },
+  {
+    "id": "riskometer",
+    "title": "Read the Riskometer",
+    "summary": "The Riskometer gives a standardized view of a mutual fund scheme's risk level.",
+    "body": "Use the Riskometer as one input when assessing whether a scheme's risk suits your circumstances. It does not predict returns or remove the possibility of loss. Read the scheme information and reassess when its portfolio or your needs change.",
+    "sourceUrl": "https://investor.sebi.gov.in/riskometer.html",
+    "videoUrl": "https://investor.sebi.gov.in/videos/inv_awa_edu_videos/Digital%20Films/How%20to%20choose%20a%20fund%20basis%20risk%20appetite/3.%20How%20to%20choose%20a%20fund%20basis%20risk%20appetite%20eng.mp4"
+  }
+]

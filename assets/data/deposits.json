@@ -1,0 +1,74 @@
+[
+  {
+    "bank": "HDFC Bank",
+    "tenureMonths": 12,
+    "annualRate": 6.25,
+    "effectiveDate": "2026-08-19",
+    "sourceUrl": "https://www.hdfc.bank.in/fixed-deposit/fd-interest-rate",
+    "note": "General-public standard retail rate for deposits below ₹3 crore; cumulative/non-cumulative payout options can change maturity proceeds. Tax not deducted."
+  },
+  {
+    "bank": "HDFC Bank",
+    "tenureMonths": 24,
+    "annualRate": 6.45,
+    "effectiveDate": "2026-08-19",
+    "sourceUrl": "https://www.hdfc.bank.in/fixed-deposit/fd-interest-rate",
+    "note": "General-public standard retail rate for deposits below ₹3 crore; cumulative/non-cumulative payout options can change maturity proceeds. Tax not deducted."
+  },
+  {
+    "bank": "HDFC Bank",
+    "tenureMonths": 36,
+    "annualRate": 6.45,
+    "effectiveDate": "2026-08-19",
+    "sourceUrl": "https://www.hdfc.bank.in/fixed-deposit/fd-interest-rate",
+    "note": "General-public standard retail rate for deposits below ₹3 crore; cumulative/non-cumulative payout options can change maturity proceeds. Tax not deducted."
+  },
+  {
+    "bank": "HDFC Bank",
+    "tenureMonths": 48,
+    "annualRate": 6.5,
+    "effectiveDate": "2026-08-19",
+    "sourceUrl": "https://www.hdfc.bank.in/fixed-deposit/fd-interest-rate",
+    "note": "Standard rate applies to the published >36 months to <55 months band; general public, deposits below ₹3 crore. Tax not deducted."
+  },
+  {
+    "bank": "HDFC Bank",
+    "tenureMonths": 60,
+    "annualRate": 6.4,
+    "effectiveDate": "2026-08-19",
+    "sourceUrl": "https://www.hdfc.bank.in/fixed-deposit/fd-interest-rate",
+    "note": "General-public standard retail rate for deposits below ₹3 crore; cumulative/non-cumulative payout options can change maturity proceeds. Tax not deducted."
+  },
+  {
+    "bank": "State Bank of India",
+    "tenureMonths": 12,
+    "annualRate": 6.25,
+    "effectiveDate": "2025-12-15",
+    "sourceUrl": "https://sbi.bank.in/web/interest-rates/deposit-rates/retail-domestic-term-deposits",
+    "note": "General-public card rate for retail domestic term deposits below ₹3 crore; cumulative/non-cumulative payout options can change maturity proceeds. Official table remains published; page last updated 2026-06-16. Senior-citizen rates excluded; tax not deducted."
+  },
+  {
+    "bank": "State Bank of India",
+    "tenureMonths": 24,
+    "annualRate": 6.4,
+    "effectiveDate": "2025-12-15",
+    "sourceUrl": "https://sbi.bank.in/web/interest-rates/deposit-rates/retail-domestic-term-deposits",
+    "note": "General-public card rate for retail domestic term deposits below ₹3 crore; cumulative/non-cumulative payout options can change maturity proceeds. Official table remains published; page last updated 2026-06-16. Senior-citizen rates excluded; tax not deducted."
+  },
+  {
+    "bank": "State Bank of India",
+    "tenureMonths": 36,
+    "annualRate": 6.3,
+    "effectiveDate": "2025-12-15",
+    "sourceUrl": "https://sbi.bank.in/web/interest-rates/deposit-rates/retail-domestic-term-deposits",
+    "note": "General-public card rate for retail domestic term deposits below ₹3 crore; cumulative/non-cumulative payout options can change maturity proceeds. Official table remains published; page last updated 2026-06-16. Senior-citizen rates excluded; tax not deducted."
+  },
+  {
+    "bank": "State Bank of India",
+    "tenureMonths": 60,
+    "annualRate": 6.05,
+    "effectiveDate": "2025-12-15",
+    "sourceUrl": "https://sbi.bank.in/web/interest-rates/deposit-rates/retail-domestic-term-deposits",
+    "note": "General-public card rate for retail domestic term deposits below ₹3 crore; cumulative/non-cumulative payout options can change maturity proceeds. Official table remains published; page last updated 2026-06-16. Senior-citizen rates excluded; tax not deducted."
+  }
+]
