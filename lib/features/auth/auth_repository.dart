@@ -8,12 +8,16 @@ class AuthRepository {
   User? get currentUser => _auth.currentUser;
 
   Future<void> signIn(String email, String password) async {
-    await _auth.signInWithEmailAndPassword(email: email.trim(), password: password);
+    await _auth.signInWithEmailAndPassword(
+      email: email.trim(),
+      password: password,
+    );
   }
 
   Future<void> register(String email, String password, String name) async {
     final credential = await _auth.createUserWithEmailAndPassword(
-      email: email.trim(), password: password,
+      email: email.trim(),
+      password: password,
     );
     await credential.user?.updateDisplayName(name.trim());
     await credential.user?.reload();

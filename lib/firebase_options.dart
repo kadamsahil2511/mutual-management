@@ -1,7 +1,8 @@
 // Firebase app configuration for Mutual Management.
 // These client identifiers are public Firebase configuration, not credentials.
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
@@ -10,9 +11,13 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError('No iOS Firebase app is registered for this project.');
+        throw UnsupportedError(
+          'No iOS Firebase app is registered for this project.',
+        );
       default:
-        throw UnsupportedError('Mutual Management Firebase is configured for web and Android.');
+        throw UnsupportedError(
+          'Mutual Management Firebase is configured for web and Android.',
+        );
     }
   }
 
@@ -32,5 +37,4 @@ class DefaultFirebaseOptions {
     projectId: 'device-streaming-f3ea5c85',
     storageBucket: 'device-streaming-f3ea5c85.firebasestorage.app',
   );
-
 }

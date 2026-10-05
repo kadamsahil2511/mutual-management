@@ -4,8 +4,8 @@ import 'user_models.dart';
 
 class UserRepository {
   UserRepository(FirebaseFirestore firestore, String uid)
-      : _firestore = firestore,
-        _uid = uid;
+    : _firestore = firestore,
+      _uid = uid;
 
   final FirebaseFirestore _firestore;
   final String _uid;
@@ -13,10 +13,14 @@ class UserRepository {
   CollectionReference<Map<String, dynamic>> _collection(String name) =>
       _firestore.collection('mutualManagementUsers/$_uid/$name');
 
-  Stream<List<T>> _watch<T>(String name, T Function(String, Map<String, dynamic>) decode) =>
-      _collection(name).snapshots().map((snapshot) => snapshot.docs
-          .map((doc) => decode(doc.id, doc.data()))
-          .toList(growable: false));
+  Stream<List<T>> _watch<T>(
+    String name,
+    T Function(String, Map<String, dynamic>) decode,
+  ) => _collection(name).snapshots().map(
+    (snapshot) => snapshot.docs
+        .map((doc) => decode(doc.id, doc.data()))
+        .toList(growable: false),
+  );
 
   Stream<List<Goal>> watchGoals() => _watch('goals', Goal.fromMap);
   Stream<List<Sip>> watchSips() => _watch('sips', Sip.fromMap);
@@ -26,7 +30,8 @@ class UserRepository {
   Future<void> saveGoal(Goal goal) =>
       _collection('goals').doc(goal.id).set(goal.toMap());
 
-  Future<void> saveSip(Sip sip) => _collection('sips').doc(sip.id).set(sip.toMap());
+  Future<void> saveSip(Sip sip) =>
+      _collection('sips').doc(sip.id).set(sip.toMap());
 
   Future<void> cancelSip(String id) =>
       _collection('sips').doc(id).update({'isActive': false});
