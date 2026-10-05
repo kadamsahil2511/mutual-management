@@ -21,3 +21,18 @@ jobs:
         with:
           name: web-release
           path: build/web
+  firestore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: firebase-tests/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci --prefix firebase-tests
+      - run: firebase-tests/node_modules/.bin/firebase emulators:exec --only firestore --project demo-mutual-management 'npm --prefix firebase-tests test'
