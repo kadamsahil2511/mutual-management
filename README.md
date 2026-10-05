@@ -6,7 +6,9 @@ A beginner-friendly app for exploring Indian mutual funds, setting goals and pra
 
 [Open the app](https://mutual-management.vercel.app) · [Download Android APK](https://github.com/kadamsahil2511/mutual-management/releases/download/v1.1.0/mutual-management-v1.1.0.apk) · [Release notes](https://github.com/kadamsahil2511/mutual-management/releases/tag/v1.1.0) · [Demo guide](docs/DEMO.md) · [CI results](https://github.com/kadamsahil2511/mutual-management/actions)
 
-[Complete Notion project handbook](https://app.notion.com/p/3f0639f172f181b78f66eb33147e49c2) — workspace access required. The full public guide is available in this README and the documentation linked below.
+[Complete project documentation (PDF)](docs/Groww_Mutual_Management.pdf) · [Download PDF](https://raw.githubusercontent.com/kadamsahil2511/mutual-management/main/docs/Groww_Mutual_Management.pdf)
+
+The 20-page project report is available directly in this repository. Its [editable Notion source](https://app.notion.com/p/3f0639f172f181b78f66eb33147e49c2) requires workspace access. Additional guides are linked below.
 
 > Accounts, cloud records and published fund data are real. Every contribution and SIP installment is an explicitly confirmed simulation. No money moves, and the app does not execute investment orders.
 
@@ -266,6 +268,7 @@ Version 1.0 established the end-to-end application and verified cloud/data flows
 
 | Document | Purpose |
 |---|---|
+| [Project documentation (PDF)](docs/Groww_Mutual_Management.pdf) | Complete 20-page project report, exported from Notion and publicly available in this repository |
 | [Notion project handbook](https://app.notion.com/p/3f0639f172f181b78f66eb33147e49c2) | Complete project documentation in Notion; workspace access required |
 | [Demo guide](docs/DEMO.md) | Installation, walkthrough and presentation points |
 | [Mobile UX audit](docs/MOBILE_UX_AUDIT.md) | Mobile findings, implemented changes and current screenshots |
