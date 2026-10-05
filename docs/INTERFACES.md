@@ -1,5 +1,7 @@
 # Mutual Management implementation contracts
 
+Historical contracts used during the version 1.0 build. Ownership assignments and original route/layout notes below describe that implementation stage. Version 1.1 adds dedicated mobile routes and bottom navigation; use [the current project handbook](../README.md), [mobile UX audit](MOBILE_UX_AUDIT.md) and current source code for the delivered behavior.
+
 All amounts are integer paise, dates are DateTime, scheme codes are strings. Plain classes with named constructors, no code generation. Flutter/Riverpod providers live in lib/core/providers.dart, theme in lib/core/theme.dart, router in lib/app.dart. Do not edit another worker's files. Root handles commits.
 
 ## Worker A owns

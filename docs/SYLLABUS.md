@@ -4,12 +4,12 @@ Sources read locally: case study 132 in **Cross Platform.pdf**, and **SEM5 - Cro
 
 | Requirement | Implementation/evidence |
 |---|---|
-| Four or more screens | Six destinations; additional detail, comparison, risk, article and authentication routes in `lib/app.dart` |
+| Four or more screens | Five mobile tabs, six desktop destinations and dedicated detail, goal/SIP/contribution, activity/receipt, account/recovery, comparison, risk and article routes in `lib/app.dart` |
 | Riverpod or BLoC | Manually declared providers in `lib/core/providers.dart` |
 | API or Firestore | MFAPI historical NAV, Firebase Auth and owner-scoped Firestore records |
 | Form validation | Email/password, exact paise parsing, dates, SIP amounts, assumptions and calculator inputs |
 | Local storage | SharedPreferences public NAV cache; successful responses expire after six hours |
-| Material 3 and responsive UI | Central theme, local fonts, drawer navigation, narrow layouts and enlarged text |
+| Material 3 and responsive UI | Central theme, local fonts, phone bottom navigation, adaptive desktop/drawer navigation, narrow layouts and 200% text checks |
 | Feature folders and repository layer | `lib/features/` with three concrete repositories |
 | Analyze/tests on each push | GitHub Actions formatting, analysis, unit/widget tests, web build and Firestore emulator tests |
 | Public source, APK, live demo | GitHub, signed release APK and Vercel links in README |

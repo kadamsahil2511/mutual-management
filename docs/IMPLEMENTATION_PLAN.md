@@ -1,5 +1,7 @@
 # Mutual Management delivery plan
 
+Historical delivery plan for the initial build. The current release, user guide and mobile revision are documented in [README](../README.md) and [the mobile UX audit](MOBILE_UX_AUDIT.md).
+
 Source: user-provided approved Flutter Web and Android plan, 5 October 2026. DESIGN.md is the visual authority. Detailed code contracts: INTERFACES.md.
 
 1. Foundation: Flutter 3.47.1 Android API24+/web, Riverpod, repository layer, local fonts/theme/router, CI.
