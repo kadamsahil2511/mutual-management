@@ -1,0 +1,97 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedInAs(uid) { return request.auth != null && request.auth.uid == uid; }
+    function knownScheme(code) { return code in ['118955', '119718', '118987', '146215', '119062', '119609']; }
+    function goalExists(uid, goalId) { return exists(/databases/$(database)/documents/mutualManagementUsers/$(uid)/goals/$(goalId)); }
+    function dateKey(date) {
+      return string(date.year()) + '-'
+        + (date.month() < 10 ? '0' : '') + string(date.month()) + '-'
+        + (date.day() < 10 ? '0' : '') + string(date.day());
+    }
+    function daysInMonth(year, month) {
+      let nextYear = month == 12 ? year + 1 : year;
+      let nextMonth = month == 12 ? 1 : month + 1;
+      return (timestamp.date(nextYear, nextMonth, 1).toMillis()
+        - timestamp.date(year, month, 1).toMillis()) / 86400000;
+    }
+    function dueDate(start, effective, interval) {
+      let monthDistance = (effective.year() - start.year()) * 12 + effective.month() - start.month();
+      let lastDay = daysInMonth(effective.year(), effective.month());
+      let dueDay = start.day() < lastDay ? start.day() : lastDay;
+      return monthDistance >= 0 && monthDistance % interval == 0
+        && effective.date() == timestamp.date(effective.year(), effective.month(), dueDay);
+    }
+    function validGoal(data) {
+      return data.keys().hasAll(['name', 'targetPaise', 'targetDate', 'assumedAnnualReturn'])
+        && data.keys().hasOnly(['name', 'targetPaise', 'targetDate', 'assumedAnnualReturn'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.targetPaise is int && data.targetPaise > 0
+        && data.targetDate is timestamp
+        && data.assumedAnnualReturn is number && data.assumedAnnualReturn >= 0 && data.assumedAnnualReturn <= 30;
+    }
+    function validSip(data) {
+      return data.keys().hasAll(['schemeCode', 'amountPaise', 'startDate', 'intervalMonths', 'goalId', 'isActive'])
+        && data.keys().hasOnly(['schemeCode', 'amountPaise', 'startDate', 'intervalMonths', 'goalId', 'isActive'])
+        && data.schemeCode is string && knownScheme(data.schemeCode)
+        && data.amountPaise is int && data.amountPaise > 0
+        && data.startDate is timestamp
+        && data.intervalMonths in [1, 3]
+        && (data.goalId == null || (data.goalId is string && goalExists(request.auth.uid, data.goalId)))
+        && data.isActive is bool;
+    }
+    function validContribution(data, id) {
+      return data.keys().hasAll(['schemeCode', 'amountPaise', 'units', 'nav', 'navDate', 'effectiveDate', 'sipId', 'goalId'])
+        && data.keys().hasOnly(['schemeCode', 'amountPaise', 'units', 'nav', 'navDate', 'effectiveDate', 'sipId', 'goalId'])
+        && data.schemeCode is string && knownScheme(data.schemeCode)
+        && data.amountPaise is int && data.amountPaise > 0
+        && data.units is number && data.units > 0
+        && data.nav is number && data.nav > 0
+        && data.navDate is timestamp && data.effectiveDate is timestamp
+        && data.navDate <= data.effectiveDate
+        && data.effectiveDate <= request.time
+        && data.units * data.nav * 100 >= data.amountPaise - 2
+        && data.units * data.nav * 100 <= data.amountPaise + 2
+        && (data.goalId == null || (data.goalId is string && goalExists(request.auth.uid, data.goalId)))
+        && (data.sipId == null || validSipContribution(data, id));
+    }
+    function validSipContribution(data, id) {
+      let sipPath = /databases/$(database)/documents/mutualManagementUsers/$(request.auth.uid)/sips/$(data.sipId);
+      return data.sipId is string && exists(sipPath)
+        && get(sipPath).data.isActive == true
+        && get(sipPath).data.schemeCode == data.schemeCode
+        && get(sipPath).data.amountPaise == data.amountPaise
+        && get(sipPath).data.goalId == data.goalId
+        && id == data.sipId + '_' + dateKey(data.effectiveDate)
+        && dueDate(get(sipPath).data.startDate, data.effectiveDate, get(sipPath).data.intervalMonths);
+    }
+    match /mutualManagementUsers/{uid} {
+      allow read: if signedInAs(uid);
+      allow create, update: if signedInAs(uid)
+        && request.resource.data.keys().hasOnly(['name'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 100;
+      allow delete: if false;
+      match /goals/{id} {
+        allow read: if signedInAs(uid);
+        allow create, update: if signedInAs(uid) && validGoal(request.resource.data);
+        allow delete: if signedInAs(uid);
+      }
+      match /sips/{id} {
+        allow read: if signedInAs(uid);
+        allow create: if signedInAs(uid) && validSip(request.resource.data);
+        allow update: if signedInAs(uid) && validSip(request.resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isActive'])
+          && resource.data.isActive == true && request.resource.data.isActive == false;
+        allow delete: if false;
+      }
+      match /contributions/{id} {
+        allow read: if signedInAs(uid);
+        allow create: if signedInAs(uid) && validContribution(request.resource.data, id);
+        allow update, delete: if false;
+      }
+      match /{document=**} { allow read, write: if false; }
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
